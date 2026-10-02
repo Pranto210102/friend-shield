@@ -62,23 +62,32 @@ def main():
 
     print(f"Raw breakdown -> Benign: {len(df_benign):,}, Malicious: {len(df_malicious):,}")
 
-    # 1. Augment benign data with root domains to eliminate path-only sampling bias
-    print("Augmenting benign data with root domains to balance domain vs path patterns...")
-    benign_roots = df_benign[url_col].sample(n=min(50000, len(df_benign)), random_state=42).apply(
-        lambda u: str(u).split("://")[-1].split("/")[0]
-    ).drop_duplicates().tolist()
+    # 1. Augment benign data with top legitimate domains and realistic common paths
+    print("Augmenting benign data with top legitimate domains and realistic paths...")
+    COMMON_BENIGN_PATHS = [
+        "", "/", "/offers", "/services", "/search", "/about", "/contact", 
+        "/help", "/docs", "/news", "/download", "/faq", "/profile"
+    ]
+    augmented_benign_urls = []
+    for d in TOP_LEGITIMATE_DOMAINS:
+        clean_d = d.replace("www.", "")
+        for p in COMMON_BENIGN_PATHS:
+            augmented_benign_urls.append(f"{clean_d}{p}")
+            augmented_benign_urls.append(f"www.{clean_d}{p}")
 
-    all_benign_roots = list(set(benign_roots + TOP_LEGITIMATE_DOMAINS))
-    df_benign_roots = pd.DataFrame({url_col: all_benign_roots, label_col: "benign"})
+    df_benign_augmented = pd.DataFrame({
+        url_col: list(set(augmented_benign_urls)),
+        label_col: "benign"
+    })
 
-    # 2. Balanced sampling: 75,000 benign (paths + root domains) and 75,000 malicious
-    SAMPLE_PER_CLASS = 75_000
+    # 2. Balanced sampling: 50,000 benign and 50,000 malicious
+    SAMPLE_PER_CLASS = 50_000
     df_b_sample = pd.concat([
-        df_benign.sample(n=min(SAMPLE_PER_CLASS - len(df_benign_roots), len(df_benign)), random_state=42),
-        df_benign_roots
+        df_benign.sample(n=min(SAMPLE_PER_CLASS - len(df_benign_augmented), len(df_benign)), random_state=42),
+        df_benign_augmented
     ]).drop_duplicates(subset=[url_col]).reset_index(drop=True)
 
-    df_m_sample = df_malicious.sample(n=min(len(df_b_sample), len(df_malicious)), random_state=42).reset_index(drop=True)
+    df_m_sample = df_malicious.sample(n=len(df_b_sample), random_state=42).reset_index(drop=True)
 
     # 3. Protocol realism: Modern web is predominantly HTTPS.
     # Older Kaggle datasets scraped raw domain strings without protocol schemes.

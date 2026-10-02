@@ -14,9 +14,7 @@ import { AppError } from "./utils/errors.js";
 const app = express();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const frontendDir = path.resolve(__dirname, "../../frontend");
-const frontedDir = path.resolve(__dirname, "../../fronted");
-const frontendPath = fs.existsSync(frontendDir) ? frontendDir : frontedDir;
+const frontendPath = path.resolve(__dirname, "../../frontend");
 
 app.disable("x-powered-by");
 

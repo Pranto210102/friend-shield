@@ -44,6 +44,44 @@ const KNOWN_BRANDS = [
   { name: "Apple/iCloud", pattern: /appleid|icloud/i, legitDomain: "apple.com" }
 ];
 
+export const TRUSTED_DOMAINS = new Set([
+  "bkash.com",
+  "nagad.com.bd",
+  "upaybd.com",
+  "daraz.com.bd",
+  "google.com",
+  "youtube.com",
+  "github.com",
+  "wikipedia.org",
+  "microsoft.com",
+  "apple.com",
+  "paypal.com",
+  "facebook.com",
+  "linkedin.com",
+  "netflix.com",
+  "twitter.com",
+  "x.com",
+  "bangladesh.gov.bd",
+  "grameenphone.com",
+  "banglalink.net",
+  "robi.com.bd",
+  "stackoverflow.com",
+  "amazon.com",
+  "mozilla.org",
+  "w3schools.com"
+]);
+
+export function isRecognizedLegitimateDomain(hostname) {
+  if (!hostname) return false;
+  const clean = hostname.toLowerCase().replace(/^www\./, "");
+  for (const domain of TRUSTED_DOMAINS) {
+    if (clean === domain || clean.endsWith(`.${domain}`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Checks if a hostname is an IPv4 or IPv6 address.
  * @param {string} hostname

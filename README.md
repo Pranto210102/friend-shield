@@ -138,9 +138,9 @@ friend-shield/
 │   ├── .env.example                     # Environment template
 │   └── package.json
 │
-├── frontend/                            # Responsive Web User Interface (also aliased as fronted/)
+├── frontend/                            # Clean, professional Light Theme Web Interface
 │   ├── index.html                       # Semantic HTML5 scanner layout
-│   ├── style.css                        # Modern cyber-security dark theme & glassmorphism
+│   ├── style.css                        # Modern high-contrast light theme
 │   └── app.js                           # State handling, 1-click presets & multilingual tabs
 │
 ├── ml-training/                         # Isolated Machine Learning Pipeline

@@ -1,7 +1,7 @@
 import { extractUrlsFromMessage } from "../services/url-extractor.service.js";
 import { resolveRedirects } from "../services/redirect-resolver.service.js";
 import { checkUrlsSafety } from "../services/safe-browsing.service.js";
-import { extractUrlFeatures } from "../services/feature-extractor.service.js";
+import { extractUrlFeatures, isRecognizedLegitimateDomain } from "../services/feature-extractor.service.js";
 import { predictUrlRisk } from "../services/ml-predictor.service.js";
 import { generateSafetyExplanation } from "../services/llm-explainer.service.js";
 import { ValidationError } from "../utils/errors.js";
@@ -12,7 +12,7 @@ const MAX_URLS_TO_PROCESS = 10;
 /**
  * Computes an evidence-based risk verdict combining Safe Browsing, Deterministic Rules, and Local ML.
  */
-function computeRiskVerdict(safeBrowsing, signals, mlPrediction) {
+function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = null) {
   // 1. Google Safe Browsing match -> Immediate HIGH_RISK
   if (safeBrowsing && !safeBrowsing.isSafe && safeBrowsing.threats?.length > 0) {
     return {
@@ -36,22 +36,53 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction) {
     };
   }
 
-  // 3. Local ML model risk probability
-  const prob = mlPrediction?.probability ?? 0.0;
+  // 3. Recognized official legitimate domain verification
+  let isLegitDomain = false;
+  if (targetUrl) {
+    try {
+      const candidate = targetUrl.startsWith("http://") || targetUrl.startsWith("https://")
+        ? targetUrl
+        : `https://${targetUrl}`;
+      const parsed = new URL(candidate);
+      isLegitDomain = isRecognizedLegitimateDomain(parsed.hostname);
+    } catch {}
+  }
 
-  if (prob >= 0.80) {
+  // If on official verified domain with no security flags -> Safe
+  if (isLegitDomain && signals.length === 0) {
     return {
-      verdict: "SUSPICIOUS",
-      confidence: "medium",
-      reason: `Local ML model estimated a high phishing probability (${(prob * 100).toFixed(1)}%).`
+      verdict: "NO_KNOWN_THREAT",
+      confidence: "high",
+      reason: "Verified official legitimate domain with no security anomalies detected."
     };
   }
 
-  if (prob >= 0.50 || signals.length >= 2) {
+  // 4. Local ML model risk probability
+  const prob = mlPrediction?.probability ?? 0.0;
+
+  // Multiple risk signals or high ML score with at least one signal
+  if (signals.length >= 2 || (prob >= 0.85 && signals.length >= 1)) {
+    return {
+      verdict: "SUSPICIOUS",
+      confidence: "medium",
+      reason: `Multiple risk signals detected alongside high ML model score (${(prob * 100).toFixed(1)}%).`
+    };
+  }
+
+  // Statistical outlier without direct threat signals
+  if (prob >= 0.85 && signals.length === 0 && !isLegitDomain) {
     return {
       verdict: "NEEDS_REVIEW",
       confidence: "medium",
-      reason: `Multiple risk signals or moderate ML probability (${(prob * 100).toFixed(1)}%) present.`
+      reason: `Statistical model flagged atypical URL structure (${(prob * 100).toFixed(1)}%), but no direct malicious indicators found.`
+    };
+  }
+
+  if (signals.length >= 1) {
+    return {
+      verdict: "NEEDS_REVIEW",
+      confidence: "medium",
+      reason: `Contains cautionary signal (${signals[0]}).`
     };
   }
 
@@ -186,7 +217,7 @@ export async function analyzeMessage(req, res, next) {
       }
 
       // Evidence-based decision
-      const decision = computeRiskVerdict(item.safeBrowsing, item.signals, item.ml);
+      const decision = computeRiskVerdict(item.safeBrowsing, item.signals, item.ml, targetUrl);
       item.riskAssessment = decision;
 
       if (decision.verdict === "HIGH_RISK" || decision.verdict === "SUSPICIOUS") {
