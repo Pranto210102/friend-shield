@@ -38,6 +38,7 @@ const threatBadge = document.getElementById("threat-badge");
 const verdictDesc = document.getElementById("verdict-desc");
 
 const explanationBox = document.getElementById("explanation-box");
+const aiSource = document.getElementById("ai-source");
 const aiSummary = document.getElementById("ai-summary");
 const aiPoints = document.getElementById("ai-points");
 const aiActionBox = document.getElementById("ai-action-box");
@@ -247,6 +248,9 @@ function renderResults(data) {
   if (data.explanation) {
     explanationBox.hidden = false;
     currentExplanation = data.explanation;
+    if (aiSource) {
+      aiSource.textContent = data.explanation.source ? `মডেল: ${data.explanation.source}` : "";
+    }
     renderExplanationLanguage();
   } else {
     explanationBox.hidden = true;
