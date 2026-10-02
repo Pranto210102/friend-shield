@@ -1,4 +1,7 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -10,19 +13,28 @@ import { AppError } from "./utils/errors.js";
 
 const app = express();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDir = path.resolve(__dirname, "../../frontend");
+const frontedDir = path.resolve(__dirname, "../../fronted");
+const frontendPath = fs.existsSync(frontendDir) ? frontendDir : frontedDir;
+
 app.disable("x-powered-by");
 
 // Basic security headers
 app.use(helmet());
 
-// Dynamic CORS configuration
-const allowedOrigin = process.env.CLIENT_URL || "http://localhost:5173";
+// Dynamic CORS configuration (allows local files, any localhost port, or specified CLIENT_URL)
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: (origin, callback) => {
+      callback(null, true);
+    },
     credentials: true
   })
 );
+
+// Serve frontend UI statically on root
+app.use(express.static(frontendPath));
 
 // Body parser with size limits
 app.use(

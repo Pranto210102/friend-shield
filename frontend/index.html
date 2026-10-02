@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friend Shield | AI-Powered Phishing & Scam Link Detector</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-badge">🛡️</div>
+        <div>
+          <h1 class="brand-title">Friend Shield <span class="brand-sub-badge">ফ্রেন্ড শিল্ড</span></h1>
+          <p class="brand-subtitle">Multi-Layer Phishing & Scam Detection Engine</p>
+        </div>
+      </div>
+      <div class="status-indicator" id="api-status">
+        <span class="status-dot"></span>
+        <span class="status-text">Connecting to API...</span>
+      </div>
+    </header>
+
+    <!-- Main Scanner Section -->
+    <main class="main-content">
+      <section class="scanner-card">
+        <div class="card-header">
+          <h2>🔍 Scan Message or Suspicious Link</h2>
+          <p class="text-muted">Paste SMS, WhatsApp, Messenger text, or any suspicious link to inspect threats in real time.</p>
+        </div>
+
+        <!-- Quick Demo Presets for Judges/Users -->
+        <div class="preset-section">
+          <span class="preset-label">Quick Test Scenarios:</span>
+          <div class="preset-buttons">
+            <button type="button" class="btn-preset scam" data-preset="bkash">
+              <span class="dot red"></span> Fake bKash Bonus
+            </button>
+            <button type="button" class="btn-preset scam" data-preset="nagad">
+              <span class="dot red"></span> Fake Nagad Reward
+            </button>
+            <button type="button" class="btn-preset scam" data-preset="ip">
+              <span class="dot red"></span> Raw IP / Login Phish
+            </button>
+            <button type="button" class="btn-preset safe" data-preset="safe">
+              <span class="dot green"></span> Safe Official Link
+            </button>
+          </div>
+        </div>
+
+        <!-- Text Input Form -->
+        <form id="scan-form" class="scan-form">
+          <div class="textarea-wrapper">
+            <textarea
+              id="message-input"
+              rows="4"
+              placeholder="Paste message text or links here... (e.g., বিকাশ থেকে আপনাকে ১০,০০০ টাকা বোনাস দেওয়া হয়েছে! ক্লেইম করুন: http://bkash-eid-bonus.xyz/claim)"
+              required
+            ></textarea>
+            <button type="button" class="btn-clear" id="btn-clear" title="Clear text">✕</button>
+          </div>
+
+          <!-- Feature Toggles -->
+          <div class="options-bar">
+            <label class="toggle-label">
+              <input type="checkbox" id="toggle-redirects" checked>
+              <span>Expand Shortened URLs (Anti-SSRF)</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="toggle-threats" checked>
+              <span>Google Safe Browsing</span>
+            </label>
+            <label class="toggle-label">
+              <input type="checkbox" id="toggle-gemini" checked>
+              <span>Gemini AI Explanation</span>
+            </label>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="form-actions">
+            <div class="keyboard-hint">Tip: Press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to analyze</div>
+            <button type="submit" class="btn-primary" id="btn-submit">
+              <span class="btn-icon">🛡️</span>
+              <span class="btn-text">Analyze Message</span>
+              <span class="spinner" id="btn-spinner" hidden></span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Results Section (Hidden until scan finishes) -->
+      <section class="results-card" id="results-card" hidden>
+        <!-- Top Verdict Banner -->
+        <div class="verdict-banner" id="verdict-banner">
+          <div class="verdict-icon" id="verdict-icon">⚠️</div>
+          <div class="verdict-info">
+            <div class="verdict-header">
+              <h3 class="verdict-title" id="verdict-title">HIGH_RISK</h3>
+              <span class="verdict-badge" id="threat-badge">Threat Detected</span>
+            </div>
+            <p class="verdict-description" id="verdict-desc">High-risk deceptive pattern detected.</p>
+          </div>
+        </div>
+
+        <!-- Gemini AI Multilingual Explanation Card -->
+        <div class="explanation-box" id="explanation-box">
+          <div class="explanation-header">
+            <div class="explanation-title-group">
+              <span class="sparkle-icon">✨</span>
+              <h4>AI Cyber-Safety Explanation</h4>
+              <span class="ai-model-tag" id="ai-source-tag">Gemini AI</span>
+            </div>
+            <!-- Language Switcher Tabs -->
+            <div class="lang-tabs">
+              <button type="button" class="lang-tab active" data-lang="bn">বাংলা (Bangla)</button>
+              <button type="button" class="lang-tab" data-lang="en">English</button>
+              <button type="button" class="lang-tab" data-lang="banglish">Banglish</button>
+            </div>
+          </div>
+
+          <div class="explanation-content" id="explanation-content">
+            <div class="alert-box" id="ai-summary"></div>
+            <div class="ai-points" id="ai-points"></div>
+            <div class="action-card" id="ai-action-box">
+              <div class="action-card-header">
+                <span class="action-icon">📌</span>
+                <span class="action-title" id="action-heading">করণীয় (Action Advice):</span>
+              </div>
+              <p class="action-text" id="ai-action-text"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detected URLs Breakdown -->
+        <div class="urls-section">
+          <div class="urls-header">
+            <h4>Discovered URLs & Multi-Layer Evidence</h4>
+            <span class="urls-count" id="urls-count-badge">0 URLs</span>
+          </div>
+          <div class="urls-list" id="urls-list">
+            <!-- Dynamic URL cards inserted here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Error Card -->
+      <div class="error-banner" id="error-banner" hidden>
+        <span class="error-icon">⚠️</span>
+        <span class="error-message" id="error-text">An error occurred.</span>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Friend Shield • Evidence-Based Phishing & Fraud Prevention Engine • Built for Hacktoberfest 2026</p>
+      <div class="tech-pills">
+        <span>Node.js & Express</span>
+        <span>ONNX Runtime (0.3ms ML)</span>
+        <span>Google Safe Browsing v4</span>
+        <span>Google Gemini LLM</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

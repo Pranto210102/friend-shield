@@ -138,6 +138,11 @@ friend-shield/
 │   ├── .env.example                     # Environment template
 │   └── package.json
 │
+├── frontend/                            # Responsive Web User Interface (also aliased as fronted/)
+│   ├── index.html                       # Semantic HTML5 scanner layout
+│   ├── style.css                        # Modern cyber-security dark theme & glassmorphism
+│   └── app.js                           # State handling, 1-click presets & multilingual tabs
+│
 ├── ml-training/                         # Isolated Machine Learning Pipeline
 │   ├── data/
 │   │   ├── sample_urls.csv              # Starter smoke test dataset
@@ -154,6 +159,21 @@ friend-shield/
 ├── .gitignore                           # Git ignore rules (secrets, datasets, cache)
 └── README.md                            # Main project documentation
 ```
+
+---
+
+## 🖥️ Web User Interface
+
+Friend Shield includes a clean, professional web interface built with vanilla HTML, CSS, and JavaScript.
+
+- **Instant Zero-Setup Access**: Once you start the backend (`npm run dev`), simply open **`http://localhost:8000`** in your browser! The backend serves the frontend statically out of the box.
+- **Standalone Access**: You can also open `frontend/index.html` directly or via any live server.
+- **1-Click Test Scenarios**: Includes instant demo buttons to test:
+  - 🔴 *Fake bKash Bonus Scam*
+  - 🔴 *Fake Nagad Cash Reward*
+  - 🔴 *Raw IP / Login Phish*
+  - 🟢 *Official Safe Link*
+- **Multilingual Explanations**: Interactive tab switcher to read the AI safety advice in **বাংলা (Bangla)**, **English**, or **Banglish**.
 
 ---
 
