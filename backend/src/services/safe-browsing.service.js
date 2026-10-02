@@ -68,12 +68,15 @@ export async function checkUrlsSafety(urls) {
   const data = await response.json();
   const matches = data.matches ?? [];
 
-  // Initialize all requested URLs as safe by default
+  // Initialize all requested URLs with NO_MATCH (absence of listing != proof of safety)
   const results = new Map();
   for (const url of uniqueUrls) {
     results.set(url, {
-      isSafe: true,
-      threats: []
+      knownThreatFound: false,
+      status: "NO_MATCH",
+      threats: [],
+      source: "Google Safe Browsing v4",
+      limitation: "No known threat was found; this does not guarantee safety."
     });
   }
 
@@ -82,7 +85,9 @@ export async function checkUrlsSafety(urls) {
     const matchedUrl = match.threat?.url;
     if (matchedUrl && results.has(matchedUrl)) {
       const entry = results.get(matchedUrl);
-      entry.isSafe = false;
+      entry.knownThreatFound = true;
+      entry.status = "THREAT_FOUND";
+      entry.limitation = "Confirmed match in Google Safe Browsing threat lists.";
       entry.threats.push({
         threatType: match.threatType,
         platformType: match.platformType,
@@ -97,11 +102,19 @@ export async function checkUrlsSafety(urls) {
 /**
  * Checks a single URL against Google Safe Browsing API.
  * @param {string} url
- * @returns {Promise<{ isSafe: boolean, threats: Array<{ threatType: string, platformType: string }> }>}
+ * @returns {Promise<{ knownThreatFound: boolean, status: string, threats: Array<{ threatType: string, platformType: string }>, limitation: string }>}
  */
 export async function checkSingleUrlSafety(url) {
   const map = await checkUrlsSafety([url]);
-  return map.get(url) ?? { isSafe: true, threats: [] };
+  return (
+    map.get(url) ?? {
+      knownThreatFound: false,
+      status: "NO_MATCH",
+      threats: [],
+      source: "Google Safe Browsing v4",
+      limitation: "No known threat was found; this does not guarantee safety."
+    }
+  );
 }
 
 export default {

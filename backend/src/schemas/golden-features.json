@@ -1,0 +1,36 @@
+[
+  {
+    "description": "Standard HTTPS Search Query",
+    "url": "https://www.google.com/search?q=cybersecurity",
+    "redirectInfo": {},
+    "expectedFeatures": [45, 14, 7, 15, 2, 0, 0, 2, 1, 0, 0, 0, 1, 0, 0, 0, 0]
+  },
+  {
+    "description": "Raw IPv4 Address with Login Path",
+    "url": "http://192.168.1.1/admin/login.php",
+    "redirectInfo": {},
+    "expectedFeatures": [34, 11, 16, 0, 4, 0, 8, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+  },
+  {
+    "description": "Known Link Shortener Service",
+    "url": "https://bit.ly/3xyzAbc",
+    "redirectInfo": {},
+    "expectedFeatures": [22, 6, 8, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0]
+  },
+  {
+    "description": "Punycode (IDN) Lookalike Domain",
+    "url": "https://xn--e1afmkfd.com/account/verify",
+    "redirectInfo": {},
+    "expectedFeatures": [39, 16, 15, 0, 1, 2, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0]
+  },
+  {
+    "description": "Redirect Chain with Domain Change & HTTPS Downgrade",
+    "url": "http://insecure-phish.com/auth?user=test&token=abc#frag",
+    "redirectInfo": {
+      "redirectCount": 2,
+      "originalUrl": "https://bit.ly/test",
+      "finalUrl": "http://insecure-phish.com/auth?user=test&token=abc#frag"
+    },
+    "expectedFeatures": [55, 18, 5, 19, 1, 1, 0, 5, 0, 0, 0, 0, 0, 0, 2, 1, 1]
+  }
+]

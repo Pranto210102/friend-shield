@@ -13,15 +13,16 @@ const MAX_MESSAGE_LENGTH = 10_000;
 const MAX_URLS_TO_PROCESS = 10;
 
 /**
- * Computes an evidence-based risk verdict combining Safe Browsing, Deterministic Rules, and Local ML.
+ * Computes an evidence-based risk verdict combining Safe Browsing reputation,
+ * deterministic security rules, local ML with uncertainty-aware abstention, and trusted domains.
  */
 function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = null) {
   // 1. Google Safe Browsing match -> Immediate HIGH_RISK
-  if (safeBrowsing && !safeBrowsing.isSafe && safeBrowsing.threats?.length > 0) {
+  if (safeBrowsing && (safeBrowsing.knownThreatFound || (!safeBrowsing.isSafe && safeBrowsing.threats?.length > 0))) {
     return {
       verdict: "HIGH_RISK",
       confidence: "high",
-      reason: "Confirmed threat detected in Google Safe Browsing lists."
+      reason: "Confirmed threat match detected in Google Safe Browsing reputation lists."
     };
   }
 
@@ -35,7 +36,7 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
     return {
       verdict: "HIGH_RISK",
       confidence: "high",
-      reason: "High-risk pattern detected (e.g. brand impersonation, raw IP, HTTPS downgrade, or @ symbol disguise)."
+      reason: "High-risk structural pattern detected (e.g. brand impersonation, raw IP, HTTPS downgrade, or @ symbol disguise)."
     };
   }
 
@@ -51,7 +52,7 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
     } catch {}
   }
 
-  // If on official verified domain with no security flags -> Safe
+  // If on official verified domain with no security flags -> No Known Threat
   if (isLegitDomain && signals.length === 0) {
     return {
       verdict: "NO_KNOWN_THREAT",
@@ -60,24 +61,39 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
     };
   }
 
-  // 4. Local ML model risk probability
-  const prob = mlPrediction?.probability ?? 0.0;
+  // 4. Local ML model risk probability & Abstention Policy
+  const prob = mlPrediction?.phishingProbability ?? mlPrediction?.probability ?? 0.0;
+  const uncertainty = mlPrediction?.uncertainty ?? Number((1.0 - 2.0 * Math.abs(prob - 0.5)).toFixed(4));
 
-  // Multiple risk signals or high ML score with at least one signal
+  // High confidence malicious: Elevated signals or very high ML probability
   if (signals.length >= 2 || (prob >= 0.85 && signals.length >= 1)) {
     return {
       verdict: "SUSPICIOUS",
       confidence: "medium",
-      reason: `Multiple risk signals detected alongside high ML model score (${(prob * 100).toFixed(1)}%).`
+      phishingProbability: prob,
+      uncertainty,
+      reason: `Multiple risk signals detected alongside high ML phishing probability (${(prob * 100).toFixed(1)}%).`
     };
   }
 
-  // Statistical outlier without direct threat signals
-  if (prob >= 0.85 && signals.length === 0 && !isLegitDomain) {
+  if (prob >= 0.85 && !isLegitDomain) {
+    return {
+      verdict: "SUSPICIOUS",
+      confidence: "medium",
+      phishingProbability: prob,
+      uncertainty,
+      reason: `Statistical model flagged atypical URL structure with high phishing probability (${(prob * 100).toFixed(1)}%).`
+    };
+  }
+
+  // Abstention Policy: Model abstains when in the ambiguous boundary zone (0.40 - 0.85)
+  if (prob >= 0.40 && !isLegitDomain) {
     return {
       verdict: "NEEDS_REVIEW",
-      confidence: "medium",
-      reason: `Statistical model flagged atypical URL structure (${(prob * 100).toFixed(1)}%), but no direct malicious indicators found.`
+      confidence: "low",
+      phishingProbability: prob,
+      uncertainty,
+      reason: `Abstention zone: Model phishing probability (${(prob * 100).toFixed(1)}%) is ambiguous (uncertainty: ${uncertainty}). Manual review recommended.`
     };
   }
 
@@ -85,14 +101,18 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
     return {
       verdict: "NEEDS_REVIEW",
       confidence: "medium",
+      phishingProbability: prob,
+      uncertainty,
       reason: `Contains cautionary signal (${signals[0]}).`
     };
   }
 
   return {
     verdict: "NO_KNOWN_THREAT",
-    confidence: "low_to_medium",
-    reason: "No known threats found in Safe Browsing and local ML indicates low risk. (Does not guarantee 100% safety)."
+    confidence: "medium",
+    phishingProbability: prob,
+    uncertainty,
+    reason: "No threat match in Google Safe Browsing and local ML indicates low structural risk. (Absence of evidence does not guarantee 100% safety)."
   };
 }
 

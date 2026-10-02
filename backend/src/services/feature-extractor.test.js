@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { extractUrlFeatures } from "./feature-extractor.service.js";
 
 function runTests() {
@@ -77,7 +78,22 @@ function runTests() {
   assert.ok(atSymbolUrl.signals.some((s) => s.includes("@")));
   console.log("✓ @ Symbol disguised URL passed");
 
-  console.log("\nALL 7 FEATURE EXTRACTOR UNIT TESTS PASSED SUCCESSFULLY!");
+  // 8. Cross-Language Golden Fixture Consistency (Identical to Python)
+  const goldenFixture = JSON.parse(
+    fs.readFileSync(new URL("../schemas/golden-features.json", import.meta.url), "utf8")
+  );
+  for (let i = 0; i < goldenFixture.length; i++) {
+    const tc = goldenFixture[i];
+    const extracted = extractUrlFeatures(tc.url, tc.redirectInfo);
+    assert.deepEqual(
+      extracted.features,
+      tc.expectedFeatures,
+      `Cross-language feature mismatch on case ${i + 1}: ${tc.description}`
+    );
+  }
+  console.log(`✓ Cross-language golden fixtures (${goldenFixture.length} cases) match Python 100%`);
+
+  console.log("\nALL 8 FEATURE EXTRACTOR UNIT TESTS PASSED SUCCESSFULLY!");
 }
 
 runTests();

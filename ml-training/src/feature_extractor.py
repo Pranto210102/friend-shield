@@ -37,12 +37,27 @@ def extract_features(
     url: str,
     redirect_count: int = 0,
     domain_changed: int = 0,
-    https_downgrade: int = 0
+    https_downgrade: int = 0,
+    original_url: str = None,
+    final_url: str = None
 ) -> list:
     """
     Extracts the exact 17 numeric features defined in feature-schema.json.
     Returns a list of numbers in the fixed schema order.
     """
+    if original_url and final_url:
+        try:
+            orig_host = (urlparse(original_url if original_url.startswith(("http://", "https://")) else "http://" + original_url).hostname or "").lower()
+            fin_host = (urlparse(final_url if final_url.startswith(("http://", "https://")) else "http://" + final_url).hostname or "").lower()
+            if orig_host and fin_host and orig_host != fin_host:
+                domain_changed = 1
+            orig_scheme = urlparse(original_url).scheme
+            fin_scheme = urlparse(final_url).scheme
+            if orig_scheme == "https" and fin_scheme == "http":
+                https_downgrade = 1
+        except Exception:
+            pass
+
     if not url.startswith(("http://", "https://")):
         url = "http://" + url
 

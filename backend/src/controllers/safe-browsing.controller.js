@@ -32,11 +32,19 @@ export async function checkUrlsSafetyController(req, res, next) {
     const resultsMap = await checkUrlsSafety(uniqueTargets);
 
     const results = uniqueTargets.map((target) => {
-      const data = resultsMap.get(target) ?? { isSafe: true, threats: [] };
+      const data = resultsMap.get(target) ?? {
+        knownThreatFound: false,
+        status: "NO_MATCH",
+        threats: [],
+        source: "Google Safe Browsing v4",
+        limitation: "No known threat was found; this does not guarantee safety."
+      };
       return {
         url: target,
-        isSafe: data.isSafe,
-        threats: data.threats
+        knownThreatFound: data.knownThreatFound,
+        status: data.status,
+        threats: data.threats,
+        limitation: data.limitation
       };
     });
 
