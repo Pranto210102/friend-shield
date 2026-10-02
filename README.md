@@ -31,7 +31,7 @@ Friend Shield transforms an overwhelming cybersecurity dilemma into a simple, 7-
 3. **Delimiter-Aware Extraction & OCR**: The engine extracts embedded links or parses OCR text in real time.
 4. **Safe Redirect Unshortening**: Hop-by-hop expansion uncovers hidden destinations while blocking private subnets (SSRF protection).
 5. **Parallel Threat Evaluation**: The link is analyzed concurrently across Google Safe Browsing, deterministic brand rules, SEMI psychological heuristics, and local ONNX machine learning.
-6. **Uncertainty-Aware Decision**: The system assigns an evidence-grounded risk verdict (`HIGH_RISK`, `SUSPICIOUS`, `NEEDS_REVIEW`, or `NO_KNOWN_THREAT`) with zero blind guessing.
+6. **Uncertainty-Aware Decision**: The system assigns an evidence-grounded risk verdict (`HIGH_RISK`, `SUSPICIOUS`, `NEEDS_REVIEW`, or `NO_KNOWN_THREAT`) using explicit evidence and an abstention policy for ambiguous cases.
 7. **Empathetic Multilingual Advice**: Open-weight AI explains *why* the link is suspicious and provides calm, step-by-step instructions in **Bangla**, **Banglish**, or **English**.
 
 ---
@@ -78,16 +78,16 @@ flowchart TD
 | **Delimiter-Aware URL Extraction** | **Complete** | Handles punctuation, brackets, trailing quotes, and Bengali text boundaries. |
 | **Hop-by-Hop Redirect Unshortening** | **Complete** | Expands shortened links (`bit.ly`, `tinyurl.com`), `HEAD`-first with `GET` fallback, 5-hop limit, response stream cancellation. |
 | **Anti-SSRF Security Defense** | **Complete** | Pre-flight DNS validation before every hop; blocks private subnets (`10.0.0.0/8`, `192.168.0.0/16`, `172.16.0.0/12`), loopback (`127.0.0.1`), and cloud metadata (`169.254.169.254`). |
-| **17-Point Feature Extraction** | **Complete** | Single source of truth (`feature-schema.json`). All 5 shared golden fixtures currently produce identical feature vectors in Python and Node.js. |
+| **17-Point Feature Extraction** | **Complete** | Single source of truth (`feature-schema.json`). 5 golden fixtures verify cross-language parity (Python ↔ Node.js) across: standard HTTPS, raw IPv4 with login path, link shortener, punycode/IDN lookalike, and redirect chain with domain change & HTTPS downgrade. |
 | **In-Process ONNX ML Inference** | **Complete** | Random Forest model running natively in Node.js via ONNX Runtime without secondary runtime overhead. |
 | **Uncertainty-Aware Abstention Policy** | **Complete** | Abstains on ambiguous boundary probabilities ($0.40 \le P < 0.85$) as `NEEDS_REVIEW`, quantifying decision ambiguity ($1 - 2|P - 0.5|$). |
 | **Regional MFS Brand Protection** | **Complete** | Detects domain mismatches against versioned `mfs-brands.json` allowlist (last verified: 2026-10-03), punycode spoofing, and credential keywords. |
 | **Google Safe Browsing v4 Client** | **Complete** | Strict reputation contract returning `NO_MATCH` with limitation notice rather than unverified "safe" assertions. |
 | **Social Engineering Index (SEMI)** | **Complete** | 4-vector normalized index quantifying psychological urgency, financial bait, authority impersonation, and coercion. |
-| **Open-Weight AI Explanations** | **Complete** | Powered by Google Gemma 2 (9B Instruct via Cloud Inference / Local Ollama `gemma2:9b`), with deterministic template fallback; strict evidence-based grounding. |
+| **Open-Weight AI Explanations** | **Complete** | Google Gemma 2 (9B Instruct) via cloud or local Ollama, with deterministic fallback when model inference is unavailable. |
 | **Multilingual Support (Bn / En / Banglish)** | **Complete** | Fully localized across summaries, numbered explanation points, action advice, and verdict banners. |
-| **Browser-Based QR Scanner** | **Complete** | Client-side canvas QR decoding performed locally in the browser via `jsQR` (no app installation required). |
-| **Progressive Web App (PWA)** | **Complete** | W3C Web App Manifest, Service Worker cache shell, touch-friendly mobile UI. |
+| **Browser-Based QR Scanner** | **Tested Locally** | Client-side canvas QR decoding performed locally in the browser via `jsQR` (no app installation required). |
+| **Progressive Web App (PWA)** | **Tested Locally** | W3C Web App Manifest, Service Worker cache shell, touch-friendly mobile UI. Not required for core detection flow. |
 
 ---
 
@@ -132,8 +132,7 @@ The local classifier was trained using Scikit-Learn in Python and exported to Op
   False Negatives (FN - Malicious missed by model):       2,348  (15.67% miss rate)
 ```
 
-> [!NOTE]
-> False Negatives from the ML model are mitigated at runtime by the **Deterministic Security Rules** (which catch brand impersonation, raw IPs on login endpoints, and @-symbol disguises) and **Google Safe Browsing** lookup before a final verdict is issued.
+> Some ML false negatives may be caught by independent **Deterministic Security Rules** (brand impersonation, raw IPs on login endpoints, @-symbol disguises) or **Google Safe Browsing** reputation lookup before a final verdict is issued; however, neither layer guarantees detection of all missed threats.
 
 ---
 
@@ -151,7 +150,9 @@ To ensure reproducible reporting, latency measurements distinguish between isola
 | **Full In-Process Pipeline** | **2.10 ms** | Feature extraction + ML inference + rule checks (excluding network). |
 | **Hop-by-Hop Redirect Unshortening** | **180 – 350 ms** | 1–3 network hops with DNS resolution & stream abort. |
 | **Google Safe Browsing API v4** | **120 – 250 ms** | Remote REST API lookup over HTTPS. |
-| **Google Gemma 2 Explanation (Cloud / Local)** | **350 – 650 ms** | Google Gemma 2 9B Instruct streaming structured JSON (or sub-millisecond offline template fallback). |
+| **Gemma 2 Explanation (Cloud Provider)** | **350 – 650 ms** | `gemma2-9b-it` via OpenAI-compatible endpoint, streaming structured JSON. |
+| **Gemma 2 Explanation (Local Ollama)** | **Hardware-dependent** | Local `gemma2:9b` inference; latency varies with CPU/GPU, quantization, and context length. |
+| **Deterministic Fallback Template** | **< 1 ms** | Immediate structured response without model inference when endpoints are unavailable. |
 
 ---
 
@@ -227,17 +228,38 @@ $$\text{decisionAmbiguity} = 1 - 2|P - 0.5|$$
 > [!IMPORTANT]
 > **Ethical AI Disclaimer**: A verdict of `NO_KNOWN_THREAT` indicates that the URL is not currently listed on threat lists and exhibits low statistical risk. It does not provide an absolute guarantee of safety.
 
+### Failure Behavior Policy
+
+| Failure Condition | System Behavior |
+| :--- | :--- |
+| Google Safe Browsing API unavailable | Continue with local ML + rules; mark Safe Browsing lookup as unavailable |
+| Redirect cannot be resolved (timeout/DNS) | `NEEDS_REVIEW` with explanation that the destination could not be verified |
+| Gemma cloud endpoint unavailable | Try local Ollama Gemma 2; if unavailable, return deterministic fallback template |
+| OCR text uncertain or empty | Ask user to confirm or manually paste extracted URL |
+| Invalid or unparseable URL | Reject input with validation error |
+| Private/metadata redirect target detected | Block request immediately (SSRF protection) |
+| ML model returns invalid tensor output | Skip ML layer; rely on deterministic rules + Safe Browsing only |
+
+### Brand Impersonation: Registrable-Domain Comparison
+
+Brand matching uses **registrable-domain comparison** against a versioned allowlist (`mfs-brands.json`). A brand keyword appearing in a subdomain, path, or query string is **not trusted** as proof of legitimacy. The system compares the URL's hostname (e.g. `nagad-cash-bonus.site`) structurally against the verified official domain (e.g. `nagad.com.bd`). Only exact domain matches or subdomains of the official domain pass verification.
+
 ---
 
 ## 🤖 Open-Weight AI: Google Gemma 2 Multilingual Explainer
 
-Friend Shield harnesses **Google Gemma 2 (9B Instruct)** — Google's state-of-the-art open-weight foundation model — to synthesize empathetic, actionable, and culturally localized cyber-safety explanations:
+Friend Shield uses **Google Gemma 2 (9B Instruct)** — Google's open-weight instruction-tuned model — to synthesize empathetic, actionable, and culturally localized cyber-safety explanations:
 
-- **Cloud Gemma 2 Inference (Production Web)**: High-speed inference of **Google Gemma 2 (9B Instruct)** via any OpenAI-compatible provider (e.g. OpenRouter, Google AI Studio, Together AI, or vLLM) with sub-second response times (~400–600ms).
-- **Local Privacy-First Alternative (On-Device)**: Fully supports self-hosted **Google Gemma 2 (`gemma2:9b` or `gemma2:2b`)** on `http://localhost:11434` via **Ollama** for 100% air-gapped, zero-cloud data privacy without transmitting private SMS/message contents outside the device.
-- **Guaranteed Deterministic Fallback**: If cloud and local endpoints are unreachable, Friend Shield's zero-dependency fallback engine instantly generates structured explanations using Google Gemma-aligned deterministic templates (`source: "Google Gemma 2 Fallback Explainer (Deterministic Template)"`), guaranteeing 100% uptime.
-- **Evidence-Grounded Explanations (Not Security Decision-Makers)**: Gemma 2 is never tasked with determining threat status or risk scores. It acts strictly as an empathetic explainer translator, receiving pre-computed deterministic signals, SEMI vectors, and ML probabilities to eliminate hallucination.
-- **Strict Output Validation**: Output is validated against a strict JSON schema (`validateExplanationPayload`) enforcing required fields, length boundaries, and script consistency.
+- **Cloud Gemma 2 Inference (Production Web)**: High-speed inference of **Google Gemma 2 (9B Instruct)** via any OpenAI-compatible endpoint. Tested configuration:
+  ```env
+  GEMMA_API_BASE=https://api.groq.com/openai/v1
+  GEMMA_MODEL=gemma2-9b-it
+  ```
+  *(Note: Groq has since decommissioned `gemma2-9b-it`. Alternative tested providers include OpenRouter `google/gemma-2-9b-it` and Google AI Studio.)*
+- **Local Privacy-First Alternative (On-Device)**: Fully supports self-hosted **Google Gemma 2 (`gemma2:9b` or `gemma2:2b`)** on `http://localhost:11434` via **Ollama** for air-gapped, zero-cloud data privacy without transmitting private SMS/message contents outside the device.
+- **Deterministic Fallback (Not Gemma)**: If both cloud and local Gemma endpoints are unreachable, the application returns a deterministic template response that preserves the safety output schema. This fallback is **not generated by Gemma**; it ensures the application can still return a structured explanation when model inference is unavailable.
+- **Evidence-Grounded Explanations (Not Security Decision-Makers)**: Gemma 2 is never tasked with determining threat status or risk scores. It acts strictly as an empathetic explainer translator, receiving pre-computed deterministic signals, SEMI vectors, and ML probabilities to reduce hallucination risk.
+- **Strict Output Validation**: Output is validated against a strict JSON schema (`validateExplanationPayload`) enforcing required fields, length boundaries, and script consistency. If validation fails, the system reverts to the deterministic fallback.
 - **Multilingual Support**: Generates three parallel outputs simultaneously: **বাংলা (Bangla)**, **English**, and **Banglish** (natural Bengali written in Latin alphabet).
 
 ### 🧪 Empirical Evaluation of Explanation Grounding & Localization Quality
@@ -334,7 +356,7 @@ friend-shield/
 - **Google Gemma 2 Model Access**:
   - *Option A (Cloud Inference)*: Any OpenAI-compatible provider hosting Gemma 2 (OpenRouter, Google AI Studio, Together AI) via `GEMMA_API_KEY` and `GEMMA_API_BASE`.
   - *Option B (Local Privacy-First)*: Run `ollama run gemma2:9b` or `ollama run gemma2:2b` on `http://localhost:11434`.
-  - *Option C (Zero-Config Offline)*: If no API key or local Ollama is configured, Friend Shield automatically uses its built-in Gemma 2 Deterministic Template Explainer with zero downtime.
+  - *Option C (Zero-Config Offline)*: If no API key or local Ollama is configured, the application returns deterministic template explanations (not generated by Gemma) to ensure a response is always available.
 
 ---
 

@@ -275,7 +275,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 
   // 3. Tier 3: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
   const fallback = generateFallbackExplanation(overallVerdict, urls);
-  fallback.source = "Google Gemma 2 Fallback Explainer (Deterministic Template)";
+  fallback.source = "Deterministic fallback template (Gemma unavailable)";
   return fallback;
 }
 
