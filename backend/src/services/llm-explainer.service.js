@@ -1,10 +1,41 @@
 /**
  * Service to generate human-friendly, actionable explanations in Bangla, English, and Banglish
- * using Open-Source / Open-Weight Gemma (Local Ollama, Groq Gemma-2, or Google Gemma).
+ * using Open-Source / Open-Weight Google Gemma 2 (Groq Cloud Inference or Local Ollama).
  */
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
 const GEMMA_LOCAL_MODEL = process.env.GEMMA_MODEL || "gemma2:2b";
+
+/**
+ * Robust JSON parser that handles pure JSON, markdown fences, and stray text.
+ */
+function extractAndParseJson(text) {
+  if (!text || typeof text !== "string") return null;
+
+  // 1. Direct parse attempt
+  try {
+    return JSON.parse(text.trim());
+  } catch {}
+
+  // 2. Extract from markdown code fences ```json ... ``` or ``` ... ```
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (match && match[1]) {
+    try {
+      return JSON.parse(match[1].trim());
+    } catch {}
+  }
+
+  // 3. Find outer braces { ... }
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(text.substring(firstBrace, lastBrace + 1));
+    } catch {}
+  }
+
+  return null;
+}
 
 /**
  * Fallback template generator when LLM is unavailable or offline.
@@ -36,7 +67,7 @@ function generateFallbackExplanation(overallVerdict, urls) {
 }
 
 /**
- * Generates an explainable cyber-safety summary using Google Gemini.
+ * Generates an explainable cyber-safety summary using Open-Source Gemma 2.
  *
  * @param {object} params
  * @param {string} params.originalMessage - User's input text.
@@ -113,7 +144,52 @@ Format strictly as a valid JSON object with the following keys:
 }
 `;
 
-  // 1. Tier 1: Try Local Open-Source Gemma 2 via Ollama (100% On-Device Privacy)
+  // 1. Tier 1: Cloud Open-Weight Gemma 2 via Groq (Primary for Cloud Deployment)
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (groqApiKey && groqApiKey.trim()) {
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${groqApiKey.trim()}`
+        },
+        body: JSON.stringify({
+          model: "gemma2-9b-it",
+          messages: [
+            {
+              role: "system",
+              content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant. You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (groqRes.ok) {
+        const data = await groqRes.json();
+        const content = data.choices?.[0]?.message?.content;
+        const parsed = extractAndParseJson(content);
+        if (parsed) {
+          parsed.source = "Open-Source Gemma 2 (gemma2-9b-it on Groq)";
+          return parsed;
+        }
+      } else {
+        const errData = await groqRes.json().catch(() => ({}));
+        console.warn("[Groq Gemma-2] Warning:", errData?.error?.message || groqRes.statusText);
+      }
+    } catch (err) {
+      console.warn("[Groq Gemma-2] Request error:", err.message);
+    }
+  }
+
+  // 2. Tier 2: Local Open-Source Gemma 2 via Ollama (100% On-Device Local Privacy)
   try {
     const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
@@ -130,88 +206,15 @@ Format strictly as a valid JSON object with the following keys:
     if (ollamaRes.ok) {
       const data = await ollamaRes.json();
       const content = data.message?.content;
-      if (content) {
-        const parsed = JSON.parse(content);
+      const parsed = extractAndParseJson(content);
+      if (parsed) {
         parsed.source = `Open-Source Gemma 2 (Local Ollama: ${GEMMA_LOCAL_MODEL})`;
         return parsed;
       }
     }
   } catch {}
 
-  // 2. Tier 2: Try Cloud Open-Weight Gemma 2 (via Groq API if configured)
-  const groqApiKey = process.env.GROQ_API_KEY;
-  if (groqApiKey) {
-    try {
-      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${groqApiKey}`
-        },
-        body: JSON.stringify({
-          model: "gemma2-9b-it",
-          messages: [{ role: "user", content: prompt }],
-          response_format: { type: "json_object" },
-          temperature: 0.2
-        }),
-        signal: AbortSignal.timeout(8000)
-      });
-
-      if (groqRes.ok) {
-        const data = await groqRes.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (content) {
-          const parsed = JSON.parse(content);
-          parsed.source = "Open-Source Gemma 2 (gemma2-9b-it via Groq)";
-          return parsed;
-        }
-      }
-    } catch {}
-  }
-
-  // 3. Tier 3: Try Google Gemma / Gemini API (if GEMINI_API_KEY is configured)
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey) {
-    const OPEN_MODELS = [
-      "gemma-2-9b-it",
-      "gemma-2-27b-it",
-      "gemini-2.0-flash",
-      "gemini-1.5-flash"
-    ];
-
-    for (const model of OPEN_MODELS) {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-      try {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.2
-            }
-          }),
-          signal: AbortSignal.timeout(10000)
-        });
-
-        if (!response.ok) continue;
-
-        const data = await response.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (rawText) {
-          const parsed = JSON.parse(rawText);
-          parsed.source = model.startsWith("gemma")
-            ? `Google Gemma 2 (${model})`
-            : `Google AI (${model})`;
-          return parsed;
-        }
-      } catch {}
-    }
-  }
-
-  // 4. Tier 4: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
+  // 3. Tier 3: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
   const fallback = generateFallbackExplanation(overallVerdict, urls);
   fallback.source = "Local Deterministic Explainer (Offline Fallback)";
   return fallback;

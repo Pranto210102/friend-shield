@@ -1,13 +1,14 @@
 # 🛡️ Friend Shield
 
-> **Multi-Layer Phishing & Scam Detection Engine with Local ML Inference, Safe Redirect Expansion, Google Safe Browsing, and Gemini Multilingual AI Explanations.**
+> **Multi-Layer Phishing & Scam Detection Engine with Local ML Inference, Safe Redirect Expansion, Google Safe Browsing, and Open-Source Gemma 2 Multilingual AI Explanations.**
 
 [![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-v5.2-black.svg)](https://expressjs.com/)
 [![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-v1.30-blue.svg)](https://onnxruntime.ai/)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-v1.9-orange.svg)](https://scikit-learn.org/)
 [![Google Safe Browsing](https://img.shields.io/badge/Google_Safe_Browsing-v4-red.svg)](https://developers.google.com/safe-browsing)
-[![Google Gemini](https://img.shields.io/badge/Google_Gemini-3.1_Flash_Lite-8e7cc3.svg)](https://aistudio.google.com/)
+[![Google Gemma 2](https://img.shields.io/badge/Open--Weight_AI-Gemma_2_(9B)-blueviolet.svg)](https://ai.google.dev/gemma)
+[![Groq Cloud](https://img.shields.io/badge/Cloud_Inference-Groq_LPU-orange.svg)](https://groq.com/)
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-ff69b4.svg)](https://hacktoberfest.com/)
 
 ---
@@ -26,7 +27,7 @@ Every day, millions of users receive deceptive links through SMS, WhatsApp, Mess
 
 ## 💡 The Friend Shield Solution
 
-Friend Shield implements an **evidence-based, multi-layer defense pipeline** running entirely within an Express backend. It pairs real-time blacklist checks with **sub-millisecond local ML inference (ONNX Runtime)**, **deterministic brand impersonation heuristics**, safe redirect unshortening, and **Google Gemini multilingual explanations in Bangla, English, and Banglish**.
+Friend Shield implements an **evidence-based, multi-layer defense pipeline** running entirely within an Express backend. It pairs real-time blacklist checks with **sub-millisecond local ML inference (ONNX Runtime)**, **deterministic brand impersonation heuristics**, safe redirect unshortening, and **Open-Source Google Gemma 2 multilingual explanations in Bangla, English, and Banglish (powered by Groq Cloud Inference or Local Ollama)**.
 
 ```mermaid
 flowchart TD
@@ -39,7 +40,7 @@ flowchart TD
     E --> H["7. Evidence-Based Decision Policy"]
     F --> H
     G --> H
-    H --> I["8. Gemini AI Explanation Engine\n(Bangla, English & Banglish)"]
+    H --> I["8. Open-Source Gemma 2 Explainer\n(Groq Cloud LPU / Local Ollama)"]
     I --> J["Actionable Verdict & Safety Advice\n(HIGH_RISK | SUSPICIOUS | NEEDS_REVIEW | NO_KNOWN_THREAT)"]
 ```
 
@@ -49,9 +50,11 @@ flowchart TD
 
 - **In-Process Local ML via ONNX Runtime**:
   - Eliminates the need for a secondary Python server at runtime.
-  - Random Forest classifier trained on 150,000 balanced URLs from Kaggle's 650k dataset.
+  - Random Forest classifier trained on 150,000 balanced URLs from Kaggle's 650k dataset + Bangladeshi verified domains.
   - **Empirical Inference Latency: 0.2 ms – 0.7 ms** per URL.
-- **Multilingual AI Safety Explanations (Google Gemini)**:
+- **Multilingual Open-Source AI Explanations (Google Gemma 2)**:
+  - Powered by **Google's open-weight `gemma2-9b-it` model via Groq's high-speed LPU inference** for production cloud deployment (~300ms latency, zero server RAM overhead).
+  - Also supports **Local Ollama (`gemma2:2b`)** for 100% offline, on-device privacy.
   - Synthesizes scan evidence into clear, empathetic, non-technical advice in **Bangla, English, and Banglish**.
   - Explicitly warns users never to share MFS PINs or OTPs when scams are detected.
   - Automatic graceful fallback to local rule-based templates if offline or unconfigured.
@@ -123,7 +126,7 @@ friend-shield/
 │   │   ├── services/
 │   │   │   ├── feature-extractor.service.js # 17 numerical features + signals
 │   │   │   ├── feature-extractor.test.js    # Automated unit tests
-│   │   │   ├── llm-explainer.service.js     # Gemini AI multilingual explainer
+│   │   │   ├── llm-explainer.service.js     # Open-Source Gemma 2 multilingual explainer
 │   │   │   ├── llm-explainer.test.js        # Explainer unit test
 │   │   │   ├── ml-predictor.service.js      # ONNX Runtime inference engine
 │   │   │   ├── redirect-resolver.service.js # Hop-by-hop unshortener + SSRF check
@@ -182,13 +185,13 @@ Friend Shield includes a clean, professional web interface and installable mobil
 ---
 
 ## 🛠️ Getting Started
-
+ 
 ### Prerequisites
 - **Node.js**: v20+ or v22+
 - **npm**: v10+
-- **Python**: v3.10+ (Only required if retraining the ML model)
-- **Google Safe Browsing API Key**: (Free tier allows 10,000 requests/day)
-- **Google Gemini API Key**: (Free tier allows 1,500 requests/day on Google AI Studio)
+- **Google Safe Browsing API Key**: (Free tier allows 10,000 requests/day at [Google Cloud Console](https://console.cloud.google.com/))
+- **Groq API Key (Recommended for Gemma 2 Cloud Deployment)**: (Free tier at [Groq Console](https://console.groq.com/keys))
+- **Local Ollama (Optional for Offline / Local Inference)**: (Install [Ollama](https://ollama.com/) and run `ollama run gemma2:2b`)
 
 ---
 
@@ -210,7 +213,9 @@ Friend Shield includes a clean, professional web interface and installable mobil
    PORT=8000
    CLIENT_URL=http://localhost:5173
    GOOGLE_SAFE_BROWSING_KEY=your_google_safe_browsing_api_key_here
-   GEMINI_API_KEY=your_gemini_api_key_here
+
+   # Open-Source Gemma 2 via Groq (Free Cloud Inference):
+   GROQ_API_KEY=your_groq_api_key_here
    ```
 
 4. **Start the API server**:
@@ -228,8 +233,8 @@ Friend Shield includes a clean, professional web interface and installable mobil
 
 ## 📖 API Documentation & Real Response
 
-### Analyze Message (Full Pipeline + Gemini AI Explanation)
-Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google Safe Browsing, runs ONNX ML inference, outputs deterministic risk signals, and generates a plain-language explanation in Bangla, English, and Banglish.
+### Analyze Message (Full Pipeline + Gemma 2 Open-Source AI Explanation)
+Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google Safe Browsing, runs ONNX ML inference, outputs deterministic risk signals, and generates a plain-language explanation in Bangla, English, and Banglish using Gemma 2.
 
 - **Endpoint**: `POST /api/analyze/message`
 - **Headers**: `Content-Type: application/json`
@@ -260,7 +265,7 @@ Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google 
     "explanation_en": "1. This is not an official Nagad website; scammers created it to steal your information. 2. The link lacks basic security, making it unsafe for your device. 3. Lottery or bonus offers are common traps used by scammers.",
     "action_advice_en": "Do not click the link under any circumstances. Never share your PIN, OTP, or password with anyone. Delete the message immediately.",
     "banglish_advice": "Ei link-e click korben na, eta ekta scam. Apnar PIN ba OTP karo sathe share korben na. Message-ti delete kore din.",
-    "source": "Gemini AI (gemini-3.1-flash-lite)"
+    "source": "Open-Source Gemma 2 (gemma2-9b-it on Groq)"
   },
   "urls": [
     {
@@ -321,6 +326,5 @@ Rather than letting an opaque ML number decide everything, Friend Shield follows
 
 ## 📄 License & Terms
 
-- Developed for **Hacktoberfest 2026**.
-- Safe Browsing queries are powered by the **Google Safe Browsing API (v4)** for non-commercial safety purposes in accordance with Google's Safe Browsing Terms of Service.
-- Multilingual explanations powered by **Google Gemini API**.
+- Multilingual explanations powered by **Google Gemma 2 (Open-Weight Model)** via Groq Cloud Inference and Local Ollama.
+

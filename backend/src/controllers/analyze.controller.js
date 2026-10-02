@@ -96,7 +96,7 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
 /**
  * Controller to analyze a message, extract URLs, resolve redirects,
  * extract numeric features, run ONNX ML inference, query Safe Browsing,
- * and synthesize an empathetic, actionable explanation via Gemini LLM.
+ * and synthesize an empathetic, actionable explanation via Open-Source Gemma 2 LLM.
  */
 export async function analyzeMessage(req, res, next) {
   try {
@@ -235,7 +235,7 @@ export async function analyzeMessage(req, res, next) {
       overallVerdict = "NEEDS_REVIEW";
     }
 
-    // 4. Generate AI Explanation in Bangla/English via Gemini LLM
+    // 4. Generate AI Explanation in Bangla/English via Open-Source Gemma 2 LLM
     let explanation = null;
     if (explain && activeUrls.length > 0) {
       explanation = await generateSafetyExplanation({

@@ -2,7 +2,7 @@ import "dotenv/config";
 import { generateSafetyExplanation } from "./llm-explainer.service.js";
 
 async function run() {
-  console.log("=== Testing Gemini Explainer Service ===");
+  console.log("=== Testing Open-Source Gemma 2 Explainer Service ===");
 
   const fakeMessage = "বিকাশ থেকে আপনাকে ১০,০০০ টাকা বোনাস দেওয়া হয়েছে! এখনই ক্লেইম করুন: http://bkash-eid-bonus.xyz/claim";
   const fakeUrls = [
