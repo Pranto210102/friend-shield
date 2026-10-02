@@ -1,0 +1,171 @@
+import os
+import shutil
+import time
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from skl2onnx import convert_sklearn
+from skl2onnx.common.data_types import FloatTensorType
+
+from feature_extractor import extract_features
+
+TOP_LEGITIMATE_DOMAINS = [
+    "google.com", "www.google.com", "youtube.com", "www.youtube.com",
+    "facebook.com", "www.facebook.com", "wikipedia.org", "en.wikipedia.org",
+    "github.com", "www.github.com", "microsoft.com", "apple.com",
+    "amazon.com", "www.amazon.com", "linkedin.com", "netflix.com",
+    "stackoverflow.com", "reddit.com", "twitter.com", "x.com",
+    "bkash.com", "www.bkash.com", "nagad.com.bd", "daraz.com.bd",
+    "bangladesh.gov.bd", "grameenphone.com", "banglalink.net", "robi.com.bd"
+]
+
+def main():
+    print("==========================================================")
+    print("       Friend Shield ML Model Training Pipeline          ")
+    print("==========================================================")
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_dir = os.path.join(base_dir, "data")
+
+    candidates = [
+        os.path.join(data_dir, "malicious_phish.csv"),
+        os.path.join(data_dir, "malicious_urls.csv"),
+        os.path.join(data_dir, "sample_urls.csv")
+    ]
+
+    dataset_path = None
+    for c in candidates:
+        if os.path.exists(c):
+            dataset_path = c
+            break
+
+    if not dataset_path:
+        raise FileNotFoundError(f"No CSV dataset found in {data_dir}.")
+
+    print(f"Loading dataset from: {dataset_path}")
+    t0 = time.time()
+    df = pd.read_csv(dataset_path)
+    print(f"Loaded {len(df):,} rows in {time.time() - t0:.2f}s")
+
+    url_col = next((c for c in df.columns if c.lower() in ["url", "urls"]), df.columns[0])
+    label_col = next((c for c in df.columns if c.lower() in ["type", "label", "result", "target"]), df.columns[1])
+
+    # Clean missing values
+    df = df.dropna(subset=[url_col])
+
+    # Separate benign and malicious
+    is_benign = df[label_col].astype(str).str.lower().isin(["0", "good", "benign", "safe", "legitimate"])
+    df_benign = df[is_benign].copy()
+    df_malicious = df[~is_benign].copy()
+
+    print(f"Raw breakdown -> Benign: {len(df_benign):,}, Malicious: {len(df_malicious):,}")
+
+    # 1. Augment benign data with root domains to eliminate path-only sampling bias
+    print("Augmenting benign data with root domains to balance domain vs path patterns...")
+    benign_roots = df_benign[url_col].sample(n=min(50000, len(df_benign)), random_state=42).apply(
+        lambda u: str(u).split("://")[-1].split("/")[0]
+    ).drop_duplicates().tolist()
+
+    all_benign_roots = list(set(benign_roots + TOP_LEGITIMATE_DOMAINS))
+    df_benign_roots = pd.DataFrame({url_col: all_benign_roots, label_col: "benign"})
+
+    # 2. Balanced sampling: 75,000 benign (paths + root domains) and 75,000 malicious
+    SAMPLE_PER_CLASS = 75_000
+    df_b_sample = pd.concat([
+        df_benign.sample(n=min(SAMPLE_PER_CLASS - len(df_benign_roots), len(df_benign)), random_state=42),
+        df_benign_roots
+    ]).drop_duplicates(subset=[url_col]).reset_index(drop=True)
+
+    df_m_sample = df_malicious.sample(n=min(len(df_b_sample), len(df_malicious)), random_state=42).reset_index(drop=True)
+
+    # 3. Protocol realism: Modern web is predominantly HTTPS.
+    # Older Kaggle datasets scraped raw domain strings without protocol schemes.
+    # We assign realistic protocol distribution: 85% HTTPS for benign, 50% HTTPS for malicious.
+    np.random.seed(42)
+    def add_realistic_scheme(url_str, https_probability):
+        clean = str(url_str).replace("http://", "").replace("https://", "").strip()
+        scheme = "https://" if np.random.rand() < https_probability else "http://"
+        return scheme + clean
+
+    df_b_sample[url_col] = df_b_sample[url_col].apply(lambda u: add_realistic_scheme(u, 0.85))
+    df_m_sample[url_col] = df_m_sample[url_col].apply(lambda u: add_realistic_scheme(u, 0.50))
+
+    df_balanced = pd.concat([df_b_sample, df_m_sample]).sample(frac=1.0, random_state=42).reset_index(drop=True)
+    df_balanced["target"] = (df_balanced[label_col] != "benign").astype(int)
+
+    print(f"Balanced training set: {len(df_balanced):,} total URLs ({len(df_b_sample):,} Benign, {len(df_m_sample):,} Malicious)")
+
+    # 4. Extract 17 numeric features
+    print("\nExtracting 17 numeric features...")
+    t_feat = time.time()
+    features_list = [extract_features(str(u)) for u in df_balanced[url_col]]
+    print(f"Extracted {len(features_list):,} feature vectors in {time.time() - t_feat:.2f}s")
+
+    X = np.array(features_list, dtype=np.float32)
+    y = df_balanced["target"].values.astype(np.int64)
+
+    # Train / Test split (80% train, 20% test)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+
+    print(f"\nTraining Random Forest model on {len(X_train):,} URLs (Testing on {len(X_test):,} URLs)...")
+    t_train = time.time()
+    clf = RandomForestClassifier(
+        n_estimators=80,
+        max_depth=14,
+        min_samples_split=5,
+        random_state=42,
+        n_jobs=-1
+    )
+    clf.fit(X_train, y_train)
+    print(f"Model training completed in {time.time() - t_train:.2f}s")
+
+    # Evaluation
+    print("\n=================== MODEL EVALUATION ===================")
+    y_pred = clf.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred)
+
+    print(f"Overall Test Accuracy: {acc * 100:.2f}%\n")
+    print("Classification Report:")
+    print(classification_report(y_test, y_pred, target_names=["Safe (0)", "Malicious (1)"], digits=4))
+
+    print("Confusion Matrix:")
+    print(f"  True Negatives (Safe correctly predicted):       {cm[0][0]:,}")
+    print(f"  False Positives (Safe wrongly flagged):         {cm[0][1]:,}")
+    print(f"  False Negatives (Malicious missed):             {cm[1][0]:,}")
+    print(f"  True Positives (Malicious correctly caught):    {cm[1][1]:,}")
+
+    # Export to ONNX
+    print("\n================== ONNX MODEL EXPORT ===================")
+    print("Converting model to ONNX format...")
+    initial_type = [("float_input", FloatTensorType([None, 17]))]
+    onnx_model = convert_sklearn(
+        clf,
+        initial_types=initial_type,
+        options={id(clf): {"zipmap": False}}
+    )
+
+    models_dir = os.path.join(base_dir, "models")
+    os.makedirs(models_dir, exist_ok=True)
+    onnx_path = os.path.join(models_dir, "phishing_model.onnx")
+
+    with open(onnx_path, "wb") as f:
+        f.write(onnx_model.SerializeToString())
+
+    file_size_mb = os.path.getsize(onnx_path) / (1024 * 1024)
+    print(f"Saved ONNX model: {onnx_path} ({file_size_mb:.2f} MB)")
+
+    # Copy directly into backend/models for runtime inference
+    backend_models_dir = os.path.join(os.path.dirname(base_dir), "backend", "models")
+    os.makedirs(backend_models_dir, exist_ok=True)
+    backend_onnx_path = os.path.join(backend_models_dir, "phishing_model.onnx")
+    shutil.copyfile(onnx_path, backend_onnx_path)
+    print(f"Copied model into backend: {backend_onnx_path}")
+    print("\nTraining & Export successfully finished!")
+
+if __name__ == "__main__":
+    main()

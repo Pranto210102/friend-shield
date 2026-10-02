@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PhishingUrlFeatureSchema",
+  "description": "Defines the 17 exact numeric features used for phishing URL ML training and inference.",
+  "version": "1.0.0",
+  "features": [
+    {
+      "name": "url_length",
+      "type": "integer",
+      "description": "Total character length of the URL."
+    },
+    {
+      "name": "hostname_length",
+      "type": "integer",
+      "description": "Character length of the hostname."
+    },
+    {
+      "name": "pathname_length",
+      "type": "integer",
+      "description": "Character length of the pathname."
+    },
+    {
+      "name": "query_length",
+      "type": "integer",
+      "description": "Character length of the query parameters string."
+    },
+    {
+      "name": "number_of_dots",
+      "type": "integer",
+      "description": "Total count of dot '.' characters in the full URL."
+    },
+    {
+      "name": "number_of_hyphens",
+      "type": "integer",
+      "description": "Total count of hyphen '-' characters in the full URL."
+    },
+    {
+      "name": "number_of_digits",
+      "type": "integer",
+      "description": "Total count of numeric digit characters in the full URL."
+    },
+    {
+      "name": "number_of_special_characters",
+      "type": "integer",
+      "description": "Count of special characters (=, &, %, ?, _, ~, #, @) in the full URL."
+    },
+    {
+      "name": "number_of_subdomains",
+      "type": "integer",
+      "description": "Number of subdomain labels before the registered domain."
+    },
+    {
+      "name": "has_ip_address",
+      "type": "integer",
+      "description": "1 if hostname is an IPv4 or IPv6 address, 0 otherwise."
+    },
+    {
+      "name": "has_at_symbol",
+      "type": "integer",
+      "description": "1 if '@' character appears in the URL, 0 otherwise."
+    },
+    {
+      "name": "has_punycode",
+      "type": "integer",
+      "description": "1 if hostname contains 'xn--', 0 otherwise."
+    },
+    {
+      "name": "has_https",
+      "type": "integer",
+      "description": "1 if protocol is https:, 0 otherwise."
+    },
+    {
+      "name": "has_shortener",
+      "type": "integer",
+      "description": "1 if domain matches a known URL shortener service, 0 otherwise."
+    },
+    {
+      "name": "redirect_count",
+      "type": "integer",
+      "description": "Number of redirect hops followed during resolution."
+    },
+    {
+      "name": "domain_changed",
+      "type": "integer",
+      "description": "1 if initial domain differs from final redirect domain, 0 otherwise."
+    },
+    {
+      "name": "https_downgrade",
+      "type": "integer",
+      "description": "1 if an HTTPS link redirected to an unencrypted HTTP link, 0 otherwise."
+    }
+  ]
+}
