@@ -1,12 +1,20 @@
 import path from "node:path";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 import ort from "onnxruntime-node";
 
 let inferenceSession = null;
 let isInitializing = false;
 let initPromise = null;
 
-const MODEL_PATH = path.resolve("models/phishing_model.onnx");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CANDIDATE_PATHS = [
+  path.resolve(__dirname, "../../models/phishing_model.onnx"),
+  path.resolve(process.cwd(), "models/phishing_model.onnx"),
+  path.resolve(process.cwd(), "backend/models/phishing_model.onnx"),
+  path.resolve(__dirname, "../../../ml-training/models/phishing_model.onnx")
+];
+const MODEL_PATH = CANDIDATE_PATHS.find((p) => fs.existsSync(p)) || CANDIDATE_PATHS[0];
 
 /**
  * Initializes and caches the ONNX inference session.
