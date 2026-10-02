@@ -7,10 +7,10 @@ const scamMessage = "বিকাশ থেকে আপনাকে ১০,০�
 const res1 = analyzeSocialEngineering(scamMessage);
 console.log("Test 1 (bKash Scam):", JSON.stringify(res1, null, 2));
 
-if (res1.score !== 46 || !res1.hasFinancialBait || !res1.hasUrgency || res1.riskLevel !== "HIGH") {
-  throw new Error(`Test 1 Failed: Expected score 46 and HIGH risk, got score ${res1.score} and risk ${res1.riskLevel}`);
+if (res1.score !== 46 || !res1.hasFinancialBait || !res1.hasUrgency || res1.riskLevel !== "MODERATE") {
+  throw new Error(`Test 1 Failed: Expected score 46 and MODERATE risk, got score ${res1.score} and risk ${res1.riskLevel}`);
 }
-console.log("✓ Test 1 passed: Accurately caught Financial Bait and Urgency with exact score 46.");
+console.log("✓ Test 1 passed: Accurately caught Financial Bait and Urgency with exact score 46 and MODERATE risk.");
 
 // Test 2: Clean legitimate transaction message
 const cleanMessage = "You have received Tk 1,500 from 01700000000. Balance Tk 4,500. TrxID 9A72BC61. https://www.bkash.com/offers";

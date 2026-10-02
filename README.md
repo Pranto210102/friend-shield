@@ -1,13 +1,13 @@
 # 🛡️ Friend Shield
 
-> **Defense-in-Depth Phishing & Scam Detection Engine with In-Process ONNX ML Inference, Anti-SSRF Redirect Expansion, Google Safe Browsing Reputation Checks, and Open-Weight Gemma 2 Explanations.**
+> **Defense-in-Depth Phishing & Scam Detection Engine with In-Process ONNX ML Inference, Anti-SSRF Redirect Expansion, Google Safe Browsing Reputation Checks, and Open-Weight AI Explanations.**
 
 [![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-v5.2-black.svg)](https://expressjs.com/)
 [![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-v1.30-blue.svg)](https://onnxruntime.ai/)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-v1.9-orange.svg)](https://scikit-learn.org/)
 [![Google Safe Browsing](https://img.shields.io/badge/Google_Safe_Browsing-v4-red.svg)](https://developers.google.com/safe-browsing)
-[![Google Gemma 2](https://img.shields.io/badge/Open--Weight_AI-Gemma_2_(9B)-blueviolet.svg)](https://ai.google.dev/gemma)
+[![Open-Weight AI](https://img.shields.io/badge/Open--Weight_AI-Qwen_2.5_%2F_Gemma_2-blueviolet.svg)](https://github.com/QwenLM/Qwen2.5)
 [![Groq Cloud](https://img.shields.io/badge/Cloud_Inference-Groq_LPU-orange.svg)](https://groq.com/)
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-ff69b4.svg)](https://hacktoberfest.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -21,6 +21,19 @@
 - **The Target Friend**: Everyday smartphone users and family members who rely heavily on Mobile Financial Services (MFS) like bKash, Nagad, and Upay, but lack cybersecurity training.
 - **The Core Frustration**: Modern phishing links look convincing on small mobile screens (`bit.ly`, lookalike subdomains), and automated browser alerts like *"Deceptive Site Ahead"* are abstract, confusing, and do not explain what concrete steps to take.
 - **The Solution**: An empathetic scanner where they can paste text or screenshots directly and receive a calm, evidence-backed verdict and step-by-step guidance in their native language (**Bangla**, **Banglish**, or **English**).
+
+---
+
+## 🧭 Core User Journey
+
+Friend Shield transforms an overwhelming cybersecurity dilemma into a simple, 7-step protective loop:
+1. **Receive Suspicious Message**: A friend receives a suspicious SMS, WhatsApp message, or screenshot with an unverified link.
+2. **Instant Input**: The friend pastes the raw message or uploads a screenshot (`Ctrl + V`) into Friend Shield.
+3. **Delimiter-Aware Extraction & OCR**: The engine extracts embedded links or parses OCR text in real time.
+4. **Safe Redirect Unshortening**: Hop-by-hop expansion uncovers hidden destinations while blocking private subnets (SSRF protection).
+5. **Parallel Threat Evaluation**: The link is analyzed concurrently across Google Safe Browsing, deterministic brand rules, SEMI psychological heuristics, and local ONNX machine learning.
+6. **Uncertainty-Aware Decision**: The system assigns an evidence-grounded risk verdict (`HIGH_RISK`, `SUSPICIOUS`, `NEEDS_REVIEW`, or `NO_KNOWN_THREAT`) with zero blind guessing.
+7. **Empathetic Multilingual Advice**: Open-weight AI explains *why* the link is suspicious and provides calm, step-by-step instructions in **Bangla**, **Banglish**, or **English**.
 
 ---
 
@@ -38,22 +51,22 @@ Every day, millions of users receive deceptive links through SMS, WhatsApp, Mess
 
 ## 💡 The Friend Shield Architecture
 
-Friend Shield implements an **evidence-based, multi-layer defense pipeline**. The runtime security pipeline is orchestrated by an Express backend, integrating in-process ONNX inference, client-side QR/OCR processing, Google Safe Browsing threat intelligence, and open-weight Gemma explanations.
+Friend Shield implements an **evidence-based, multi-layer defense pipeline**. The runtime security pipeline is orchestrated by an Express backend, integrating in-process ONNX inference, client-side QR/OCR processing, Google Safe Browsing threat intelligence, and open-weight language model explanations.
 
-Crucially, **the LLM is never allowed to make the security decision**. The local model and rule engine generate deterministic evidence and risk probabilities, while Gemma 2 translates that verified evidence into empathetic, user-friendly language in Bangla, English, and Banglish.
+Crucially, **the LLM is never allowed to make the security decision**. The local model and rule engine generate deterministic evidence and risk probabilities, while the language model translates that verified evidence into empathetic, user-friendly language in Bangla, English, and Banglish.
 
 ```mermaid
 flowchart TD
     A["Raw Message / Chat / Screenshot"] --> B["1. Delimiter-Aware URL & QR Extraction"]
     B --> C["2. Safe Redirect Unshortening\n(Hop-by-hop Anti-SSRF Defense)"]
     C --> D["3. 17-Point Feature Extraction\n(Locked Schema Contract)"]
-    D --> E["4. In-Process ONNX ML Inference\n(Uncertainty-Aware Probability)"]
+    D --> E["4. In-Process ONNX ML Inference\n(Ambiguity-Aware Probability)"]
     D --> F["5. Deterministic Rules Engine\n(MFS Brand Impersonation, Raw IPs)"]
     C --> G["6. Google Safe Browsing v4\n(Reputation Database Lookup)"]
     E --> H["7. Evidence-Based Decision & Abstention Policy"]
     F --> H
     G --> H
-    H --> I["8. Open-Weight Gemma 2 Explainer\n(Groq Cloud LPU / Local Ollama)"]
+    H --> I["8. Open-Weight AI Explainer\n(Groq Cloud LPU / Local Ollama)"]
     I --> J["Actionable Verdict & Safety Advice\n(HIGH_RISK | SUSPICIOUS | NEEDS_REVIEW | NO_KNOWN_THREAT)"]
 ```
 
@@ -66,16 +79,15 @@ flowchart TD
 | **Delimiter-Aware URL Extraction** | **Complete** | Handles punctuation, brackets, trailing quotes, and Bengali text boundaries. |
 | **Hop-by-Hop Redirect Unshortening** | **Complete** | Expands shortened links (`bit.ly`, `tinyurl.com`), `HEAD`-first with `GET` fallback, 5-hop limit, response stream cancellation. |
 | **Anti-SSRF Security Defense** | **Complete** | Pre-flight DNS validation before every hop; blocks private subnets (`10.0.0.0/8`, `192.168.0.0/16`, `172.16.0.0/12`), loopback (`127.0.0.1`), and cloud metadata (`169.254.169.254`). |
-| **17-Point Feature Extraction** | **Complete** | Single source of truth (`feature-schema.json`), verified with cross-language golden test fixtures matching Python 100%. |
+| **17-Point Feature Extraction** | **Complete** | Single source of truth (`feature-schema.json`). All 5 shared golden fixtures currently produce identical feature vectors in Python and Node.js. |
 | **In-Process ONNX ML Inference** | **Complete** | Random Forest model running natively in Node.js via ONNX Runtime without secondary runtime overhead. |
-| **Uncertainty-Aware Abstention Policy** | **Complete** | Abstains on ambiguous boundary probabilities ($0.40 \le P < 0.85$) as `NEEDS_REVIEW`, quantifying uncertainty ($1 - 2|P - 0.5|$). |
-| **Regional MFS Brand Protection** | **Complete** | Detects domain mismatches for bKash, Nagad, Upay, Daraz, Apple, PayPal, punycode spoofing, and credential keywords. |
+| **Uncertainty-Aware Abstention Policy** | **Complete** | Abstains on ambiguous boundary probabilities ($0.40 \le P < 0.85$) as `NEEDS_REVIEW`, quantifying decision ambiguity ($1 - 2|P - 0.5|$). |
+| **Regional MFS Brand Protection** | **Complete** | Detects domain mismatches against versioned `mfs-brands.json` allowlist (last verified: 2026-10-03), punycode spoofing, and credential keywords. |
 | **Google Safe Browsing v4 Client** | **Complete** | Strict reputation contract returning `NO_MATCH` with limitation notice rather than unverified "safe" assertions. |
-| **Social Engineering Index (SEMI)** | **Complete** | 4-vector weighted heuristic index quantifying psychological urgency, financial bait, authority impersonation, and coercion. |
-| **Open-Weight Gemma 2 Explanations** | **Complete** | Powered by `gemma2-9b-it` via Groq Cloud LPU with local Ollama (`gemma2:2b`) fallback; strict evidence-based grounding. |
+| **Social Engineering Index (SEMI)** | **Complete** | 4-vector normalized index quantifying psychological urgency, financial bait, authority impersonation, and coercion. |
+| **Open-Weight AI Explanations** | **Complete** | Powered by Qwen 2.5 (27B) via Groq Cloud LPU with local Ollama (`gemma2:9b`) fallback; strict evidence-based grounding. |
 | **Multilingual Support (Bn / En / Banglish)** | **Complete** | Fully localized across summaries, numbered explanation points, action advice, and verdict banners. |
-| **Zero-Install Client QR Scanner** | **Complete** | Sub-15ms canvas QR decoding via `jsQR`. |
-| **Screenshot OCR Message Extraction** | **Complete** | Dual-engine: Native backend OCR endpoint (`/api/analyze/extract-image`) + browser WASM fallback with watchdog timeout. |
+| **Browser-Based QR Scanner** | **Complete** | Client-side canvas QR decoding performed locally in the browser via `jsQR` (no app installation required). |
 | **Progressive Web App (PWA)** | **Complete** | W3C Web App Manifest, Service Worker cache shell, touch-friendly mobile UI. |
 
 ---
@@ -163,7 +175,10 @@ For a deceptive SMS stating: *"বিকাশ থেকে ১০,০০০ ট
 - Urgency ($U$): Triggered by *"এখনই"* $\to 50 + 1 \times 20 = 70$.
 - Authority Impersonation ($AU$): $0$ (does not mimic official helpdesk/support phrases).
 - Credential Coercion ($CC$): $0$.
-$$\text{SEMI} = 0.30(70) + 0.25(100) + 0.20(0) + 0.25(0) = 21 + 25 = 46 \implies \mathbf{HIGH\ RISK}$$
+$$\text{SEMI} = 0.30(70) + 0.25(100) + 0.20(0) + 0.25(0) = 21 + 25 = 46 \implies \mathbf{MODERATE\ RISK}\ (25 - 49)$$
+
+> [!NOTE]
+> **Independent Layer Separation**: The message text exhibits a **MODERATE** SEMI risk score ($46/100$), while the extracted URL independently triggers an overall verdict of **HIGH_RISK** due to deterministic brand impersonation and unencrypted HTTP transport.
 
 > [!NOTE]
 > **Scientific Limitation Notice**: SEMI is a rule-based educational heuristic indicator, not a clinically or psychometrically validated psychological measurement. It is designed to identify and explain common social-engineering patterns, not to diagnose human cognitive states.
@@ -215,12 +230,12 @@ $$\text{decisionAmbiguity} = 1 - 2|P - 0.5|$$
 
 ---
 
-## 🤖 Open-Weight AI: Google Gemma 2 Integration
+## 🤖 Open-Weight AI: Multilingual Safety Explanations (Qwen 2.5 & Google Gemma 2)
 
-Friend Shield utilizes **Google's open-weight Gemma 2 model family** and open-weight models to generate human-centered, actionable cyber-safety advice:
+Friend Shield utilizes open-weight foundation models to generate human-centered, actionable cyber-safety advice:
 
-- **Local Privacy-First Alternative**: Fully supports self-hosted **Ollama (`gemma2:9b` or `gemma2:2b`)** on `http://localhost:11434` for 100% air-gapped, zero-cloud data privacy.
-- **High-Speed Cloud Inference**: Hosted LPU inference via Groq Cloud API for ultra-fast response times (~350–650ms) on cloud deployments. *(Note: Groq is solely the hardware inference provider hosting open-weight models; it is not the model itself).*
+- **Cloud LPU Inference (Production Web)**: Hosted high-speed inference of the open-weight **Qwen 2.5 (27B)** (`qwen/qwen3.8-27b`) foundation model via Groq Cloud LPU for ultra-fast response times (~350–500ms). *(Note: Groq is solely the hardware LPU inference provider; Qwen 2.5 is an open-weight model licensed under Apache 2.0).*
+- **Local Privacy-First Alternative (On-Device)**: Fully supports self-hosted **Google Gemma 2 (`gemma2:9b` or `gemma2:2b`)** on `http://localhost:11434` via **Ollama** for 100% air-gapped, zero-cloud data privacy.
 - **Evidence-Grounded Explanations (Not Security Decision-Makers)**: The LLM never determines safety. Its prompt is strictly injected with deterministic verdicts, verified signals, SEMI vectors, and domain data.
 - **Strict Output Validation & Fallback**: Output is validated against a strict JSON schema (`validateExplanationPayload`) enforcing required fields, length limits, and script validation. If validation fails or the API times out, the system automatically falls back to an offline deterministic template.
 - **Multilingual Support**: Generates three parallel outputs: **বাংলা (Bangla)**, **English**, and **Banglish** (Bengali phonetics in English alphabet).
@@ -234,7 +249,7 @@ Tested across 60 curated real-world attack and benign messages (20 per language 
 | **English** | 20 | 20 / 20 (100.0%) | 0 / 20 (0.0%) | 415 ms |
 | **Banglish (Phonetic)** | 20 | 18 / 20 (90.0%) | 0 / 20 (0.0%) | 495 ms |
 
-> **Model Terms Notice**: Gemma is an open-weight model provided by Google under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms). Groq provides hosted LPU inference. Application developers remain responsible for prompt safety and output validation.
+> **Model Terms Notice**: Qwen 2.5 is released under the Apache 2.0 open-source license. Gemma 2 is provided by Google under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms). Groq provides hosted LPU inference. Application developers remain responsible for prompt safety and output validation.
 
 ---
 
@@ -315,9 +330,9 @@ friend-shield/
 ### Prerequisites
 - **Node.js**: v20+ or v22+
 - **npm**: v10+
-- **Google Safe Browsing API Key**: (Free tier allows 10,000 requests/day at [Google Cloud Console](https://console.cloud.google.com/))
-- **Groq API Key (Recommended for Cloud Gemma 2 Inference)**: (Free tier at [Groq Console](https://console.groq.com/keys))
-- **Local Ollama (Optional for Offline / On-Device Inference)**: Run `ollama run gemma2:2b`
+- **Google Safe Browsing API Key**: (Usage is free under applicable terms and subject to Google Cloud project quotas at [Google Cloud Console](https://console.cloud.google.com/))
+- **Groq API Key (Recommended for Cloud LPU Inference)**: (Free tier at [Groq Console](https://console.groq.com/keys), hosts open-weight `Qwen 2.5 27B`)
+- **Local Ollama (Optional for Offline / Air-Gapped Inference)**: Run `ollama run gemma2:9b` or `ollama run gemma2:2b`
 
 ---
 
@@ -345,7 +360,7 @@ friend-shield/
    ```bash
    npm test
    ```
-   *Runs 8 Feature Extractor tests (including cross-language golden fixtures), 3 SEMI tests, and the Gemma 2 Explainer test.*
+   *Runs 8 Feature Extractor tests (including cross-language golden fixtures), 3 SEMI tests, and the Open-Weight AI Explainer test.*
 
 5. **Start the API server**:
    ```bash
@@ -381,7 +396,7 @@ friend-shield/
   "overallVerdict": "HIGH_RISK",
   "socialEngineering": {
     "score": 46,
-    "riskLevel": "HIGH",
+    "riskLevel": "MODERATE",
     "vectorsDetected": 2,
     "vectors": [
       {
@@ -402,14 +417,14 @@ friend-shield/
     "limitation": "SEMI is a rule-based educational heuristic indicator, not a clinically or psychometrically validated psychological measurement."
   },
   "explanation": {
-    "summary_bn": "এটি একটি প্রতারণামূলক বার্তা, লিংকে ক্লিক করা বিপজ্জনক।",
-    "explanation_bn": "১. ডোমেইনটি নগদের অফিশিয়াল ডোমেইন (nagad.com.bd) নয়, এটি ব্র্যান্ড অনুকরণ।\n২. সংযোগটি অসুরক্ষিত (HTTP), ফলে তথ্য হাতিয়ে নেওয়ার ঝুঁকি রয়েছে।\n৩. লটারি বা বোনাসের প্রলোভন একটি পরিচিত প্রতারণা কৌশল।",
+    "summary_bn": "এই বার্তাটিতে ফিশিং ও প্রতারণার শক্তিশালী ঝুঁকি রয়েছে, লিংকে ক্লিক করা বিপজ্জনক।",
+    "explanation_bn": "১. ডোমেইনটি নগদের অফিশিয়াল ডোমেইন (nagad.com.bd) নয়, এটি ব্র্যান্ড অনুকরণ।\n২. লিংকটি HTTP ব্যবহার করে, তাই এতে পাঠানো তথ্য ইন্টারনেটে সুরক্ষিতভাবে encrypted নাও থাকতে পারে।\n৩. লটারি বা বোনাসের প্রলোভন একটি পরিচিত প্রতারণা কৌশল।",
     "action_advice_bn": "লিংকে ভুলেও ক্লিক করবেন না। আপনার নগদ পিন, ওটিপি বা পাসওয়ার্ড কাউকে দেবেন না।",
-    "summary_en": "This is a fraudulent scam message; do not click the link.",
-    "explanation_en": "1. The domain does not match the configured official Nagad domain (nagad.com.bd).\n2. The connection uses unencrypted HTTP, so data is not protected in transit.\n3. Cash reward promises are common social engineering hooks.",
+    "summary_en": "This message contains strong phishing and deception indicators; do not click the link.",
+    "explanation_en": "1. The domain does not match the configured official Nagad domain (nagad.com.bd).\n2. The link uses unencrypted HTTP, so information submitted through it is not protected in transit.\n3. Cash reward promises are common social engineering hooks.",
     "action_advice_en": "Do not click the link under any circumstances. Never disclose your PIN or OTP.",
-    "summary_banglish": "Eta ekta biphodjjonok fake scam message, link-e click korben na.",
-    "explanation_banglish": "1. Link-ti Nagad-er official domain noy, eta brand impersonation.\n2. Link-ti HTTP (unencrypted) hoye thakle data secure thake na.\n3. Cash reward er kotha bole fraud korar chesta kora hocche.",
+    "summary_banglish": "Ei message-e strong phishing indicators pawa geche, link-e click korben na.",
+    "explanation_banglish": "1. Link-ti Nagad-er official domain noy, eta brand impersonation.\n2. Link-ti HTTP (unencrypted) use korche tai internet-e data secure thakbe na.\n3. Cash reward er kotha bole fraud korar chesta kora hocche.",
     "action_advice_banglish": "Kono vabei link-e click korben na. PIN ba OTP karo sathe share korben na.",
     "source": "Open-Source AI (qwen/qwen3.8-27b hosted on Groq LPU)"
   },
@@ -451,5 +466,5 @@ friend-shield/
 
 ## 📄 License & Terms
 
-- Code released under the **[MIT License](LICENSE)**.
-- Explanations powered by **Google Gemma 2 (Open-Weight Model)** via Groq Cloud Hosted Inference and Local Ollama under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms).
+- Core application code released under the **[MIT License](LICENSE)**.
+- Explanations powered by open-weight models: **Qwen 2.5 (27B)** (Apache 2.0 license) hosted on Groq Cloud LPU, and **Google Gemma 2** (under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms)) via local on-device Ollama.

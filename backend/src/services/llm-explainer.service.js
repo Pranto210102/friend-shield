@@ -77,16 +77,16 @@ function generateFallbackExplanation(overallVerdict, urls) {
 
   if (isHighRisk) {
     return {
-      summary_bn: "⚠️ উচ্চ সতর্কতা! এই বার্তাটিতে সন্দেহজনক বা বিপজ্জনক লিংক পাওয়া গেছে।",
-      explanation_bn: "১. আমাদের নিরাপত্তা বিশ্লেষণ অনুযায়ী এই লিংকটি ব্যক্তিগত তথ্য বা আর্থিক অ্যাকাউন্ট হাতিয়ে নেওয়ার জন্য তৈরি হতে পারে।\n২. লিংকের ডোমেইন বা কাঠামো সন্দেহজনক।",
+      summary_bn: "⚠️ উচ্চ সতর্কতা! এই লিংকটিতে ফিশিং ও জালিয়াতির শক্তিশালী ঝুঁকি রয়েছে।",
+      explanation_bn: "১. আমাদের নিরাপত্তা বিশ্লেষণ অনুযায়ী এই লিংকটিতে ব্র্যান্ড অনুকরণ বা ক্ষতিকর কাঠামো শনাক্ত হয়েছে।\n২. লিংকটি HTTP ব্যবহার করে, তাই এতে পাঠানো তথ্য সুরক্ষিতভাবে encrypted নাও থাকতে পারে।",
       action_advice_bn: "১. কোনো অবস্থাতেই এই লিংকে ক্লিক করবেন না।\n২. আপনার বিকাশ/নগদ পিন, ওটিপি বা পাসওয়ার্ড কারো সাথে শেয়ার করবেন না।",
-      summary_en: "⚠️ High Risk! A suspicious or fraudulent link was detected in this message.",
-      explanation_en: "1. Security analysis identified deceptive patterns (such as brand impersonation or unencrypted pathways) designed to steal credentials.\n2. The link does not match official banking servers.",
-      action_advice_en: "1. Do not click the link.\n2. Never enter your PIN, OTP, or passwords.\n3. Verify offers exclusively through official apps.",
-      summary_banglish: "⚠️ High Risk! Ei message-e biphodjjonok ba scam link pawa geche.",
-      explanation_banglish: "1. Security analysis-e ei link-e brand impersonation ba fake offer er lokkhon pawa geche.\n2. Link-ti official domain noy, eta apnar password ba PIN churi korte pare.",
+      summary_en: "⚠️ High Risk! This link contains strong phishing and deception indicators.",
+      explanation_en: "1. Security analysis identified deceptive patterns (such as brand impersonation) that do not match official domains.\n2. The link uses unencrypted HTTP, so information submitted through it is not protected in transit.",
+      action_advice_en: "1. Do not click or open this link.\n2. Never enter your PIN, OTP, or passwords.\n3. Verify offers exclusively through official apps.",
+      summary_banglish: "⚠️ High Risk! Ei link-e strong phishing indicators pawa geche, click korben na.",
+      explanation_banglish: "1. Link-ti official domain noy, eta brand impersonation er moto deceptive pattern.\n2. Link-ti unencrypted HTTP use korche, tai internet-e information protected thakbe na.",
       action_advice_banglish: "1. Kono vabei ei link-e click korben na.\n2. Apnar bKash ba Nagad PIN/OTP karo sathe share korben na.\n3. Shob offer shudhumatro official app theke verify korun.",
-      banglish_advice: "Ei link-e click korben na. Kono vabei bKash ba Nagad PIN/OTP share korben na. Eta scam hote pare."
+      banglish_advice: "Ei link-e click korben na. Kono vabei bKash ba Nagad PIN/OTP share korben na."
     };
   }
 
@@ -105,7 +105,7 @@ function generateFallbackExplanation(overallVerdict, urls) {
 }
 
 /**
- * Generates an explainable cyber-safety summary using Open-Source Gemma 2.
+ * Generates an explainable cyber-safety summary using Open-Source LLMs.
  *
  * @param {object} params
  * @param {string} params.originalMessage - User's input text.
@@ -125,7 +125,7 @@ export async function generateSafetyExplanation({
     url: u.normalized,
     verdict: u.riskAssessment?.verdict,
     signals: u.signals || [],
-    mlRiskProbability: u.ml?.probability !== undefined ? `${(u.ml.probability * 100).toFixed(1)}%` : "N/A",
+    mlRiskProbability: u.ml?.phishingProbability !== undefined ? `${(u.ml.phishingProbability * 100).toFixed(1)}%` : "N/A",
     safeBrowsingThreats: u.safeBrowsing?.threats || []
   }));
 
@@ -156,16 +156,16 @@ ${
 - It is a genuine transaction confirmation (e.g., bKash, Nagad, or bank SMS with TrxID, balance, cash-in/send money) or a safe message with legitimate official links.
 - DO NOT call this message "suspicious" or "phishing"!
 - DO NOT say "এই মেসেজটি সন্দেহজনক হতে পারে" or "এটি ভুয়া মেসেজ"!
-- Clearly confirm in the summary and explanation that the message appears authentic, legitimate, and safe.
+- Clearly confirm in the summary and explanation that no known threats were found.
 - Point out 1-3 reassuring factors (e.g., legitimate transaction format, no malicious links, official domain).
-- Action advice: Confirm the transaction is fine, and provide standard routine security hygiene (e.g., "মেসেজটি নিরাপদ। তবে সতর্কতাস্বরূপ কখনোই কাউকে আপনার বিকাশ/ব্যাংক পিন বা ওটিপি দেবেন না।").
+- Action advice: Confirm the transaction looks typical, and provide standard routine security hygiene (e.g., "মেসেজটি নিরাপদ দেখাচ্ছে। তবে সতর্কতাস্বরূপ কখনোই কাউকে আপনার বিকাশ/ব্যাংক পিন বা ওটিপি দেবেন না।").
 `
     : isDangerous
     ? `
-- The security engine determined this message is: ${overallVerdict} (DANGEROUS / SCAM).
-- Warn the user clearly and urgently that this is a fraudulent message or scam attempt.
-- Point out why (e.g. brand impersonation, unencrypted HTTP, fake lottery/bonus promises, raw IP, suspicious links).
-- Strongly urge them NEVER to click the link and NEVER to disclose their PIN, OTP, or password.
+- The security engine determined this message is: ${overallVerdict} (STRONG RISK INDICATORS).
+- State that this message/link contains strong phishing or deception indicators (e.g. brand impersonation, unencrypted HTTP, suspicious structural signals).
+- For unencrypted HTTP: State accurately that the link uses HTTP, so information submitted through it is not protected in transit (ইন্টারনেটে তথ্য সুরক্ষিতভাবে encrypted নাও থাকতে পারে).
+- Strongly urge the user NEVER to click the link and NEVER to disclose their PIN, OTP, or password.
 `
     : `
 - The security engine determined this message: NEEDS REVIEW.
@@ -195,8 +195,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
     const candidateModels = [
       process.env.GROQ_MODEL,
       "qwen/qwen3.8-27b",
-      "openai/gpt-oss-20b",
-      "gemma2-9b-it"
+      "openai/gpt-oss-20b"
     ].filter(Boolean);
 
     for (const model of candidateModels) {

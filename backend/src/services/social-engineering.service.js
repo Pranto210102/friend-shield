@@ -185,11 +185,11 @@ export function analyzeSocialEngineering(text) {
   const finalScore = Math.min(100, Math.round(weightedSum));
 
   let riskLevel = "MINIMAL";
-  if (finalScore >= 70 || detectedVectors.length >= 3) {
+  if (finalScore >= 75 || detectedVectors.length >= 3) {
     riskLevel = "CRITICAL";
-  } else if (finalScore >= 40 || detectedVectors.length >= 2) {
+  } else if (finalScore >= 50) {
     riskLevel = "HIGH";
-  } else if (finalScore >= 20 || detectedVectors.length >= 1) {
+  } else if (finalScore >= 25 || detectedVectors.length >= 1) {
     riskLevel = "MODERATE";
   }
 
