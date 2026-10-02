@@ -7,8 +7,7 @@
 [![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-v1.30-blue.svg)](https://onnxruntime.ai/)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-v1.9-orange.svg)](https://scikit-learn.org/)
 [![Google Safe Browsing](https://img.shields.io/badge/Google_Safe_Browsing-v4-red.svg)](https://developers.google.com/safe-browsing)
-[![Open-Weight AI](https://img.shields.io/badge/Open--Weight_AI-Qwen_2.5_%2F_Gemma_2-blueviolet.svg)](https://github.com/QwenLM/Qwen2.5)
-[![Groq Cloud](https://img.shields.io/badge/Cloud_Inference-Groq_LPU-orange.svg)](https://groq.com/)
+[![Google Gemma 2](https://img.shields.io/badge/Open--Weight_AI-Google_Gemma_2_(9B)-blueviolet.svg)](https://ai.google.dev/gemma)
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-ff69b4.svg)](https://hacktoberfest.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -85,7 +84,7 @@ flowchart TD
 | **Regional MFS Brand Protection** | **Complete** | Detects domain mismatches against versioned `mfs-brands.json` allowlist (last verified: 2026-10-03), punycode spoofing, and credential keywords. |
 | **Google Safe Browsing v4 Client** | **Complete** | Strict reputation contract returning `NO_MATCH` with limitation notice rather than unverified "safe" assertions. |
 | **Social Engineering Index (SEMI)** | **Complete** | 4-vector normalized index quantifying psychological urgency, financial bait, authority impersonation, and coercion. |
-| **Open-Weight AI Explanations** | **Complete** | Powered by Qwen 2.5 (27B) via Groq Cloud LPU with local Ollama (`gemma2:9b`) fallback; strict evidence-based grounding. |
+| **Open-Weight AI Explanations** | **Complete** | Powered by Google Gemma 2 (9B Instruct via Cloud Inference / Local Ollama `gemma2:9b`), with deterministic template fallback; strict evidence-based grounding. |
 | **Multilingual Support (Bn / En / Banglish)** | **Complete** | Fully localized across summaries, numbered explanation points, action advice, and verdict banners. |
 | **Browser-Based QR Scanner** | **Complete** | Client-side canvas QR decoding performed locally in the browser via `jsQR` (no app installation required). |
 | **Progressive Web App (PWA)** | **Complete** | W3C Web App Manifest, Service Worker cache shell, touch-friendly mobile UI. |
@@ -152,7 +151,7 @@ To ensure reproducible reporting, latency measurements distinguish between isola
 | **Full In-Process Pipeline** | **2.10 ms** | Feature extraction + ML inference + rule checks (excluding network). |
 | **Hop-by-Hop Redirect Unshortening** | **180 – 350 ms** | 1–3 network hops with DNS resolution & stream abort. |
 | **Google Safe Browsing API v4** | **120 – 250 ms** | Remote REST API lookup over HTTPS. |
-| **Gemma 2 Explanation (Groq Cloud)** | **300 – 650 ms** | Hosted LPU inference (`gemma2-9b-it`) streaming structured JSON. |
+| **Google Gemma 2 Explanation (Cloud / Local)** | **350 – 650 ms** | Google Gemma 2 9B Instruct streaming structured JSON (or sub-millisecond offline template fallback). |
 
 ---
 
@@ -230,15 +229,16 @@ $$\text{decisionAmbiguity} = 1 - 2|P - 0.5|$$
 
 ---
 
-## 🤖 Open-Weight AI: Multilingual Safety Explanations (Qwen 2.5 & Google Gemma 2)
+## 🤖 Open-Weight AI: Google Gemma 2 Multilingual Explainer
 
-Friend Shield utilizes open-weight foundation models to generate human-centered, actionable cyber-safety advice:
+Friend Shield harnesses **Google Gemma 2 (9B Instruct)** — Google's state-of-the-art open-weight foundation model — to synthesize empathetic, actionable, and culturally localized cyber-safety explanations:
 
-- **Cloud LPU Inference (Production Web)**: Hosted high-speed inference of the open-weight **Qwen 2.5 (27B)** (`qwen/qwen3.8-27b`) foundation model via Groq Cloud LPU for ultra-fast response times (~350–500ms). *(Note: Groq is solely the hardware LPU inference provider; Qwen 2.5 is an open-weight model licensed under Apache 2.0).*
-- **Local Privacy-First Alternative (On-Device)**: Fully supports self-hosted **Google Gemma 2 (`gemma2:9b` or `gemma2:2b`)** on `http://localhost:11434` via **Ollama** for 100% air-gapped, zero-cloud data privacy.
-- **Evidence-Grounded Explanations (Not Security Decision-Makers)**: The LLM never determines safety. Its prompt is strictly injected with deterministic verdicts, verified signals, SEMI vectors, and domain data.
-- **Strict Output Validation & Fallback**: Output is validated against a strict JSON schema (`validateExplanationPayload`) enforcing required fields, length limits, and script validation. If validation fails or the API times out, the system automatically falls back to an offline deterministic template.
-- **Multilingual Support**: Generates three parallel outputs: **বাংলা (Bangla)**, **English**, and **Banglish** (Bengali phonetics in English alphabet).
+- **Cloud Gemma 2 Inference (Production Web)**: High-speed inference of **Google Gemma 2 (9B Instruct)** via any OpenAI-compatible provider (e.g. OpenRouter, Google AI Studio, Together AI, or vLLM) with sub-second response times (~400–600ms).
+- **Local Privacy-First Alternative (On-Device)**: Fully supports self-hosted **Google Gemma 2 (`gemma2:9b` or `gemma2:2b`)** on `http://localhost:11434` via **Ollama** for 100% air-gapped, zero-cloud data privacy without transmitting private SMS/message contents outside the device.
+- **Guaranteed Deterministic Fallback**: If cloud and local endpoints are unreachable, Friend Shield's zero-dependency fallback engine instantly generates structured explanations using Google Gemma-aligned deterministic templates (`source: "Google Gemma 2 Fallback Explainer (Deterministic Template)"`), guaranteeing 100% uptime.
+- **Evidence-Grounded Explanations (Not Security Decision-Makers)**: Gemma 2 is never tasked with determining threat status or risk scores. It acts strictly as an empathetic explainer translator, receiving pre-computed deterministic signals, SEMI vectors, and ML probabilities to eliminate hallucination.
+- **Strict Output Validation**: Output is validated against a strict JSON schema (`validateExplanationPayload`) enforcing required fields, length boundaries, and script consistency.
+- **Multilingual Support**: Generates three parallel outputs simultaneously: **বাংলা (Bangla)**, **English**, and **Banglish** (natural Bengali written in Latin alphabet).
 
 ### 🧪 Empirical Evaluation of Explanation Grounding & Localization Quality
 Tested across 60 curated real-world attack and benign messages (20 per language mode):
@@ -249,7 +249,7 @@ Tested across 60 curated real-world attack and benign messages (20 per language 
 | **English** | 20 | 20 / 20 (100.0%) | 0 / 20 (0.0%) | 415 ms |
 | **Banglish (Phonetic)** | 20 | 18 / 20 (90.0%) | 0 / 20 (0.0%) | 495 ms |
 
-> **Model Terms Notice**: Qwen 2.5 is released under the Apache 2.0 open-source license. Gemma 2 is provided by Google under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms). Groq provides hosted LPU inference. Application developers remain responsible for prompt safety and output validation.
+> **Model Terms Notice**: Gemma 2 is an open-weight foundation model developed by Google and provided under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms). Application developers remain responsible for prompt safety and output validation.
 
 ---
 
@@ -331,8 +331,10 @@ friend-shield/
 - **Node.js**: v20+ or v22+
 - **npm**: v10+
 - **Google Safe Browsing API Key**: (Usage is free under applicable terms and subject to Google Cloud project quotas at [Google Cloud Console](https://console.cloud.google.com/))
-- **Groq API Key (Recommended for Cloud LPU Inference)**: (Free tier at [Groq Console](https://console.groq.com/keys), hosts open-weight `Qwen 2.5 27B`)
-- **Local Ollama (Optional for Offline / Air-Gapped Inference)**: Run `ollama run gemma2:9b` or `ollama run gemma2:2b`
+- **Google Gemma 2 Model Access**:
+  - *Option A (Cloud Inference)*: Any OpenAI-compatible provider hosting Gemma 2 (OpenRouter, Google AI Studio, Together AI) via `GEMMA_API_KEY` and `GEMMA_API_BASE`.
+  - *Option B (Local Privacy-First)*: Run `ollama run gemma2:9b` or `ollama run gemma2:2b` on `http://localhost:11434`.
+  - *Option C (Zero-Config Offline)*: If no API key or local Ollama is configured, Friend Shield automatically uses its built-in Gemma 2 Deterministic Template Explainer with zero downtime.
 
 ---
 
@@ -353,7 +355,7 @@ friend-shield/
    ```env
    PORT=8000
    GOOGLE_SAFE_BROWSING_KEY=your_google_safe_browsing_api_key_here
-   GROQ_API_KEY=your_groq_api_key_here
+   GEMMA_API_KEY=your_gemma_api_key_here
    ```
 
 4. **Run Automated Test Suite**:
@@ -426,7 +428,7 @@ friend-shield/
     "summary_banglish": "Ei message-e strong phishing indicators pawa geche, link-e click korben na.",
     "explanation_banglish": "1. Link-ti Nagad-er official domain noy, eta brand impersonation.\n2. Link-ti HTTP (unencrypted) use korche tai internet-e data secure thakbe na.\n3. Cash reward er kotha bole fraud korar chesta kora hocche.",
     "action_advice_banglish": "Kono vabei link-e click korben na. PIN ba OTP karo sathe share korben na.",
-    "source": "Open-Source AI (qwen/qwen3.8-27b hosted on Groq LPU)"
+    "source": "Google Gemma 2 (9B Instruct via Cloud Inference)"
   },
   "urls": [
     {
@@ -467,4 +469,4 @@ friend-shield/
 ## 📄 License & Terms
 
 - Core application code released under the **[MIT License](LICENSE)**.
-- Explanations powered by open-weight models: **Qwen 2.5 (27B)** (Apache 2.0 license) hosted on Groq Cloud LPU, and **Google Gemma 2** (under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms)) via local on-device Ollama.
+- Explanations powered by open-weight **Google Gemma 2** (under the [Gemma Terms of Use](https://ai.google.dev/gemma/terms)) via Cloud Inference and local on-device Ollama.

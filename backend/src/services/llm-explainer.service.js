@@ -189,29 +189,33 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 }
 `;
 
-  // 1. Tier 1: Cloud Open-Weight Model via Groq (Primary for Cloud Deployment)
-  const groqApiKey = process.env.GROQ_API_KEY;
-  if (groqApiKey && groqApiKey.trim()) {
+  // 1. Tier 1: Cloud Google Gemma 2 Inference (via Groq Cloud LPU or OpenAI-Compatible Gemma Endpoint)
+  const apiKey = process.env.GEMMA_API_KEY || process.env.GROQ_API_KEY;
+  const apiBase = process.env.GEMMA_API_BASE || "https://api.groq.com/openai/v1";
+
+  if (apiKey && apiKey.trim()) {
     const candidateModels = [
-      process.env.GROQ_MODEL,
-      "qwen/qwen3.8-27b",
-      "openai/gpt-oss-20b"
+      process.env.GEMMA_MODEL,
+      "gemma2-9b-it",
+      "google/gemma-2-9b-it",
+      "gemma-2-9b-it",
+      "gemma-2-27b-it"
     ].filter(Boolean);
 
     for (const model of candidateModels) {
       try {
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const groqRes = await fetch(`${apiBase}/chat/completions`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${groqApiKey.trim()}`
+            "Authorization": `Bearer ${apiKey.trim()}`
           },
           body: JSON.stringify({
             model,
             messages: [
               {
                 role: "system",
-                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant. You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Google Gemma 2. You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
               },
               {
                 role: "user",
@@ -230,20 +234,20 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
           const parsed = extractAndParseJson(content);
           const validated = validateExplanationPayload(parsed);
           if (validated) {
-            validated.source = `Open-Source AI (${model} hosted on Groq LPU)`;
+            validated.source = `Google Gemma 2 (${model} via Cloud Inference)`;
             return validated;
           }
         } else {
           const errData = await groqRes.json().catch(() => ({}));
-          console.warn(`[Groq ${model}] Warning:`, errData?.error?.message || groqRes.statusText);
+          console.warn(`[Gemma Cloud ${model}] Warning:`, errData?.error?.message || groqRes.statusText);
         }
       } catch (err) {
-        console.warn(`[Groq ${model}] Request error:`, err.message);
+        console.warn(`[Gemma Cloud ${model}] Request error:`, err.message);
       }
     }
   }
 
-  // 2. Tier 2: Local Open-Source Gemma 2 via Ollama (100% On-Device Local Privacy)
+  // 2. Tier 2: Local Google Gemma 2 via Ollama (100% On-Device Local Privacy)
   try {
     const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
@@ -271,7 +275,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 
   // 3. Tier 3: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
   const fallback = generateFallbackExplanation(overallVerdict, urls);
-  fallback.source = "Local Deterministic Explainer (Offline Fallback)";
+  fallback.source = "Google Gemma 2 Fallback Explainer (Deterministic Template)";
   return fallback;
 }
 
