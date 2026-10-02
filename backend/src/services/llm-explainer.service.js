@@ -1,13 +1,10 @@
 /**
  * Service to generate human-friendly, actionable explanations in Bangla, English, and Banglish
- * using Google's Gemini LLM.
+ * using Open-Source / Open-Weight Gemma (Local Ollama, Groq Gemma-2, or Google Gemma).
  */
 
-const GEMINI_MODELS = [
-  "gemini-3.1-flash-lite",
-  "gemini-flash-latest",
-  "gemini-3.5-flash-lite"
-];
+const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
+const GEMMA_LOCAL_MODEL = process.env.GEMMA_MODEL || "gemma2:2b";
 
 /**
  * Fallback template generator when LLM is unavailable or offline.
@@ -54,12 +51,6 @@ export async function generateSafetyExplanation({
   urls,
   language = "both"
 }) {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return generateFallbackExplanation(overallVerdict, urls);
-  }
-
   const simplifiedUrls = (urls || []).map((u) => ({
     url: u.normalized,
     verdict: u.riskAssessment?.verdict,
@@ -122,47 +113,107 @@ Format strictly as a valid JSON object with the following keys:
 }
 `;
 
-  // Try available models in order of latency
-  for (const model of GEMINI_MODELS) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // 1. Tier 1: Try Local Open-Source Gemma 2 via Ollama (100% On-Device Privacy)
+  try {
+    const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: GEMMA_LOCAL_MODEL,
+        messages: [{ role: "user", content: prompt }],
+        stream: false,
+        format: "json"
+      }),
+      signal: AbortSignal.timeout(4000) // Fast check for local daemon
+    });
 
-    try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.2
-          }
-        }),
-        signal: AbortSignal.timeout(12000)
-      });
-
-      if (!response.ok) {
-        continue;
-      }
-
-      const data = await response.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (rawText) {
-        const parsed = JSON.parse(rawText);
-        parsed.source = `Gemini AI (${model})`;
+    if (ollamaRes.ok) {
+      const data = await ollamaRes.json();
+      const content = data.message?.content;
+      if (content) {
+        const parsed = JSON.parse(content);
+        parsed.source = `Open-Source Gemma 2 (Local Ollama: ${GEMMA_LOCAL_MODEL})`;
         return parsed;
       }
-    } catch (err) {
-      // Try next model if timeout or network glitch
-      continue;
+    }
+  } catch {}
+
+  // 2. Tier 2: Try Cloud Open-Weight Gemma 2 (via Groq API if configured)
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (groqApiKey) {
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${groqApiKey}`
+        },
+        body: JSON.stringify({
+          model: "gemma2-9b-it",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          temperature: 0.2
+        }),
+        signal: AbortSignal.timeout(8000)
+      });
+
+      if (groqRes.ok) {
+        const data = await groqRes.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          const parsed = JSON.parse(content);
+          parsed.source = "Open-Source Gemma 2 (gemma2-9b-it via Groq)";
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Tier 3: Try Google Gemma / Gemini API (if GEMINI_API_KEY is configured)
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey) {
+    const OPEN_MODELS = [
+      "gemma-2-9b-it",
+      "gemma-2-27b-it",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash"
+    ];
+
+    for (const model of OPEN_MODELS) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.2
+            }
+          }),
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (!response.ok) continue;
+
+        const data = await response.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          const parsed = JSON.parse(rawText);
+          parsed.source = model.startsWith("gemma")
+            ? `Google Gemma 2 (${model})`
+            : `Google AI (${model})`;
+          return parsed;
+        }
+      } catch {}
     }
   }
 
-  // Graceful fallback if all models fail or rate-limit
+  // 4. Tier 4: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
   const fallback = generateFallbackExplanation(overallVerdict, urls);
-  fallback.source = "Local Rule-Based Explainer (Offline Fallback)";
+  fallback.source = "Local Deterministic Explainer (Offline Fallback)";
   return fallback;
 }
 
