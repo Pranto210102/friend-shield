@@ -45,10 +45,63 @@ const KNOWN_BRANDS = [
 ];
 
 export const TRUSTED_DOMAINS = new Set([
+  // Bangladeshi MFS, Central & Commercial Banks
   "bkash.com",
   "nagad.com.bd",
   "upaybd.com",
+  "rocket.com.bd",
+  "bb.org.bd",
+  "bracbank.com",
+  "dutchbanglabank.com",
+  "citybankonline.com",
+  "ebl.com.bd",
+  "islamibankbd.com",
+  "ucb.com.bd",
+  "primebank.com.bd",
+
+  // Bangladeshi Government, Statutory Bodies & Public Services
+  "bangladesh.gov.bd",
+  "nbr.gov.bd",
+  "btrc.gov.bd",
+  "police.gov.bd",
+  "educationboardresults.gov.bd",
+  "passport.gov.bd",
+  "nidw.gov.bd",
+  "dgshs.gov.bd",
+  "epassport.gov.bd",
+
+  // Bangladeshi Telecom Operators
+  "grameenphone.com",
+  "banglalink.net",
+  "robi.com.bd",
+  "teletalk.com.bd",
+
+  // Leading Bangladeshi E-Commerce, Logistics & Tech Platforms
   "daraz.com.bd",
+  "chaldal.com",
+  "rokomari.com",
+  "pickaboo.com",
+  "pathao.com",
+  "shohoz.com",
+  "shwapno.com",
+
+  // Bangladeshi Public & Private Universities
+  "du.ac.bd",
+  "buet.ac.bd",
+  "ru.ac.bd",
+  "nsu.edu",
+  "bracu.ac.bd",
+  "aiub.edu",
+
+  // Leading Bangladeshi News Media
+  "prothomalo.com",
+  "thedailystar.net",
+  "bdnews24.com",
+  "dhakatribune.com",
+  "jugantor.com",
+  "kalerkantho.com",
+
+  // Global Trusted Platforms
   "google.com",
   "youtube.com",
   "github.com",
@@ -61,10 +114,6 @@ export const TRUSTED_DOMAINS = new Set([
   "netflix.com",
   "twitter.com",
   "x.com",
-  "bangladesh.gov.bd",
-  "grameenphone.com",
-  "banglalink.net",
-  "robi.com.bd",
   "stackoverflow.com",
   "amazon.com",
   "mozilla.org",
@@ -74,6 +123,12 @@ export const TRUSTED_DOMAINS = new Set([
 export function isRecognizedLegitimateDomain(hostname) {
   if (!hostname) return false;
   const clean = hostname.toLowerCase().replace(/^www\./, "");
+  
+  // Direct government (.gov.bd) and accredited academic (.ac.bd) TLD verification
+  if (clean.endsWith(".gov.bd") || clean.endsWith(".ac.bd")) {
+    return true;
+  }
+
   for (const domain of TRUSTED_DOMAINS) {
     if (clean === domain || clean.endsWith(`.${domain}`)) {
       return true;

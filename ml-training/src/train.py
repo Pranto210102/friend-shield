@@ -11,14 +11,61 @@ from skl2onnx.common.data_types import FloatTensorType
 
 from feature_extractor import extract_features
 
-TOP_LEGITIMATE_DOMAINS = [
-    "google.com", "www.google.com", "youtube.com", "www.youtube.com",
-    "facebook.com", "www.facebook.com", "wikipedia.org", "en.wikipedia.org",
-    "github.com", "www.github.com", "microsoft.com", "apple.com",
-    "amazon.com", "www.amazon.com", "linkedin.com", "netflix.com",
-    "stackoverflow.com", "reddit.com", "twitter.com", "x.com",
-    "bkash.com", "www.bkash.com", "nagad.com.bd", "daraz.com.bd",
-    "bangladesh.gov.bd", "grameenphone.com", "banglalink.net", "robi.com.bd"
+TOP_GLOBAL_DOMAINS = [
+    "google.com", "youtube.com", "facebook.com", "wikipedia.org",
+    "github.com", "microsoft.com", "apple.com", "amazon.com",
+    "linkedin.com", "netflix.com", "stackoverflow.com", "reddit.com", "x.com"
+]
+
+TOP_BD_LEGITIMATE_DOMAINS = [
+    # MFS & Digital Banking
+    "bkash.com", "nagad.com.bd", "upaybd.com", "rocket.com.bd", "bb.org.bd",
+    "bracbank.com", "dutchbanglabank.com", "citybankonline.com", "ebl.com.bd",
+    "islamibankbd.com", "ucb.com.bd", "primebank.com.bd",
+    # Government & Public Services (.gov.bd)
+    "bangladesh.gov.bd", "nbr.gov.bd", "btrc.gov.bd", "police.gov.bd",
+    "educationboardresults.gov.bd", "passport.gov.bd", "nidw.gov.bd",
+    "dgshs.gov.bd", "epassport.gov.bd",
+    # Telecom Operators
+    "grameenphone.com", "banglalink.net", "robi.com.bd", "teletalk.com.bd",
+    # E-Commerce & Tech Services
+    "daraz.com.bd", "chaldal.com", "rokomari.com", "pickaboo.com",
+    "pathao.com", "shohoz.com", "shwapno.com",
+    # Universities (.ac.bd / .edu)
+    "du.ac.bd", "buet.ac.bd", "ru.ac.bd", "nsu.edu", "bracu.ac.bd", "aiub.edu",
+    # News & Media
+    "prothomalo.com", "thedailystar.net", "bdnews24.com", "dhakatribune.com",
+    "jugantor.com", "kalerkantho.com"
+]
+
+TOP_LEGITIMATE_DOMAINS = TOP_GLOBAL_DOMAINS + TOP_BD_LEGITIMATE_DOMAINS
+
+# Empirical Bangladeshi SMS & Phishing scam patterns
+TOP_BD_SCAM_PATTERNS = [
+    "http://bkash-eid-bonus.xyz/claim",
+    "http://bkash-offer2026.site/win",
+    "http://bkash-free-sendmoney.com.online-reward.info",
+    "http://bkash-verification-alert.top/verify",
+    "http://bkash-cashback-bonus.xyz",
+    "http://bkash-pin-reset.online/login",
+    "http://bkash-lottery-winner.site/claim.php",
+    "http://nagad-cash-bonus.site/claim",
+    "http://nagad-eid-offer.online/reward",
+    "http://nagad-money-win.top/free",
+    "http://nagad-verification-otp.xyz/auth",
+    "http://nagad-digital-reward.info/prize",
+    "http://nagad-5000tk-prize.site",
+    "http://upay-bonus-win.xyz/collect",
+    "http://rocket-dbbl-prize.site/claim",
+    "http://dbbl-nexus-verify.top/login",
+    "http://gp-free-internet-50gb.site/claim",
+    "http://banglalink-cash-prize.top/win",
+    "http://robi-eid-gift.xyz/bonus",
+    "http://teletalk-govt-bonus.site/apply",
+    "http://daraz-11-11-free-gift.xyz/lucky-draw",
+    "http://daraz-voucher-claim.top/discount",
+    "http://bd-govt-subsidies.xyz/apply",
+    "http://jubo-unnayan-loan.top/registration"
 ]
 
 def main():
@@ -87,7 +134,14 @@ def main():
         df_benign_augmented
     ]).drop_duplicates(subset=[url_col]).reset_index(drop=True)
 
-    df_m_sample = df_malicious.sample(n=len(df_b_sample), random_state=42).reset_index(drop=True)
+    df_bd_scams = pd.DataFrame({
+        url_col: TOP_BD_SCAM_PATTERNS,
+        label_col: "phishing"
+    })
+    df_m_sample = pd.concat([
+        df_malicious.sample(n=len(df_b_sample) - len(df_bd_scams), random_state=42),
+        df_bd_scams
+    ]).drop_duplicates(subset=[url_col]).reset_index(drop=True)
 
     # 3. Protocol realism: Modern web is predominantly HTTPS.
     # Older Kaggle datasets scraped raw domain strings without protocol schemes.
