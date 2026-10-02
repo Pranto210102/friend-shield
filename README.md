@@ -52,6 +52,13 @@ flowchart TD
   - Eliminates the need for a secondary Python server at runtime.
   - Random Forest classifier trained on 150,000 balanced URLs from Kaggle's 650k dataset + Bangladeshi verified domains.
   - **Empirical Inference Latency: 0.2 ms – 0.7 ms** per URL.
+- **Social Engineering Manipulation Index (SEMI)**:
+  - Dissects the psychological manipulation tactics behind scam messages across 4 vectors: **Urgency/Panic, Financial Bait/Greed, Authority Impersonation, and Credential Coercion**.
+  - Produces an automated manipulation risk score (0–100%) and feeds psychological insights into the AI explainer.
+- **Zero-Install QR Code & Screenshot OCR Scanner**:
+  - Solves the modern threat of **"Quishing" (QR Code Phishing)** and screenshot-based SMS scams.
+  - Users can paste (`Ctrl+V`), drag-and-drop, or upload screenshot images.
+  - Automatically decodes QR codes in **<15ms via `jsQR`** and extracts text/links using **client-side WebAssembly OCR via `Tesseract.js`**.
 - **Multilingual Open-Source AI Explanations (Google Gemma 2)**:
   - Powered by **Google's open-weight `gemma2-9b-it` model via Groq's high-speed LPU inference** for production cloud deployment (~300ms latency, zero server RAM overhead).
   - Also supports **Local Ollama (`gemma2:2b`)** for 100% offline, on-device privacy.
