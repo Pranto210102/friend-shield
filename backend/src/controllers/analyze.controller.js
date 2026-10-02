@@ -265,20 +265,20 @@ export async function analyzeMessage(req, res, next) {
 
     for (const item of activeUrls) {
       // Safe Browsing verdict
-      const origVerdict = threatResults.get(item.normalized) ?? { isSafe: true, threats: [] };
+      const origVerdict = threatResults.get(item.normalized) ?? { knownThreatFound: false, threats: [] };
       const finalVerdict = item.redirectResolution?.finalUrl
-        ? threatResults.get(item.redirectResolution.finalUrl) ?? { isSafe: true, threats: [] }
+        ? threatResults.get(item.redirectResolution.finalUrl) ?? { knownThreatFound: false, threats: [] }
         : null;
 
-      const isSafeBrowsingSafe = origVerdict.isSafe && (!finalVerdict || finalVerdict.isSafe);
+      const isKnownThreatFound = origVerdict.knownThreatFound || (finalVerdict && finalVerdict.knownThreatFound);
       const allThreats = [
-        ...origVerdict.threats,
+        ...(origVerdict.threats || []),
         ...(finalVerdict ? finalVerdict.threats : [])
       ];
 
       item.safeBrowsing = {
-        knownThreatFound: !isSafeBrowsingSafe,
-        isSafe: isSafeBrowsingSafe,
+        knownThreatFound: isKnownThreatFound,
+        isSafe: !isKnownThreatFound,
         threats: allThreats,
         source: "Google Safe Browsing"
       };
