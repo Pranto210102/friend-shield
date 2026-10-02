@@ -1,5 +1,5 @@
 // ==========================================
-// Friend Shield - Clean Frontend Controller
+// Friend Shield - Frontend Controller & PWA
 // ==========================================
 
 const API_BASE_URL =
@@ -16,6 +16,7 @@ const PRESET_MESSAGES = {
 
 let currentExplanation = null;
 let currentLanguage = "bn";
+let deferredInstallPrompt = null;
 
 // DOM Elements
 const messageInput = document.getElementById("message-input");
@@ -23,11 +24,11 @@ const btnClear = document.getElementById("btn-clear");
 const scanForm = document.getElementById("scan-form");
 const btnSubmit = document.getElementById("btn-submit");
 const btnSpinner = document.getElementById("btn-spinner");
+const btnInstall = document.getElementById("btn-install");
 
 const apiStatus = document.getElementById("api-status");
 const resultsCard = document.getElementById("results-card");
-const errorBanner = document.getElementById("error-banner");
-const errorText = document.getElementById("error-text");
+const toastContainer = document.getElementById("toast-container");
 
 const verdictBanner = document.getElementById("verdict-banner");
 const verdictIcon = document.getElementById("verdict-icon");
@@ -45,7 +46,49 @@ const langTabs = document.querySelectorAll(".lang-tab");
 
 const urlsList = document.getElementById("urls-list");
 
-// 1. API Health Check
+// 1. PWA Service Worker Registration
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("sw.js")
+      .then((reg) => {
+        console.log("[PWA] Service Worker registered with scope:", reg.scope);
+      })
+      .catch((err) => {
+        console.warn("[PWA] Service Worker registration failed:", err);
+      });
+  });
+}
+
+// 2. PWA Install Prompt Handler
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (btnInstall) {
+    btnInstall.style.display = "inline-flex";
+  }
+});
+
+if (btnInstall) {
+  btnInstall.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === "accepted") {
+      btnInstall.style.display = "none";
+    }
+    deferredInstallPrompt = null;
+  });
+}
+
+window.addEventListener("appinstalled", () => {
+  if (btnInstall) {
+    btnInstall.style.display = "none";
+  }
+  showToast("Friend Shield অ্যাপটি সফলভাবে ইনস্টল করা হয়েছে! 🎉", "success");
+});
+
+// 3. API Health Check
 async function checkApiHealth() {
   const statusDot = apiStatus.querySelector(".status-dot");
   const statusText = apiStatus.querySelector(".status-text");
@@ -64,7 +107,7 @@ async function checkApiHealth() {
   }
 }
 
-// 2. Preset Click Handlers
+// 4. Preset Click Handlers
 document.querySelectorAll(".pill-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     const key = btn.dataset.preset;
@@ -80,7 +123,6 @@ btnClear.addEventListener("click", () => {
   messageInput.value = "";
   messageInput.focus();
   resultsCard.hidden = true;
-  errorBanner.hidden = true;
 });
 
 // Keyboard Shortcut: Ctrl + Enter
@@ -91,7 +133,7 @@ messageInput.addEventListener("keydown", (e) => {
   }
 });
 
-// 3. Language Switcher Tabs
+// 5. Language Switcher Tabs
 langTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     langTabs.forEach((t) => t.classList.remove("active"));
@@ -122,7 +164,7 @@ function renderExplanationLanguage() {
   }
 }
 
-// 4. Form Submission & Scan
+// 6. Form Submission & Scan
 scanForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = messageInput.value.trim();
@@ -131,7 +173,6 @@ scanForm.addEventListener("submit", async (e) => {
   btnSubmit.disabled = true;
   btnSpinner.hidden = false;
   resultsCard.hidden = true;
-  errorBanner.hidden = true;
 
   try {
     const payload = {
@@ -156,17 +197,16 @@ scanForm.addEventListener("submit", async (e) => {
 
     renderResults(data);
   } catch (err) {
-    showError(err.message || "সার্ভারের সাথে সংযোগ স্থাপন করা যায়নি।");
+    showToast(err.message || "সার্ভারের সাথে সংযোগ স্থাপন করা যায়নি।", "error");
   } finally {
     btnSubmit.disabled = false;
     btnSpinner.hidden = true;
   }
 });
 
-// 5. Render Scan Results
+// 7. Render Scan Results
 function renderResults(data) {
   resultsCard.hidden = false;
-  errorBanner.hidden = true;
 
   const verdict = data.overallVerdict || (data.threatDetected ? "HIGH_RISK" : "NO_KNOWN_THREAT");
 
@@ -218,12 +258,12 @@ function renderResults(data) {
   resultsCard.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// 6. Render Simple Links List
+// 8. Render Simple Links List
 function renderUrlsList(urls) {
   urlsList.innerHTML = "";
 
   if (urls.length === 0) {
-    urlsList.innerHTML = `<p style="font-size: 0.9rem; color: #64748b;">কোনো ওয়েবসাইট লিংক পাওয়া যায়নি।</p>`;
+    urlsList.innerHTML = `<p style="font-size: 0.9rem; color: #64748b; padding: 4px 0;">কোনো ওয়েবসাইট লিংক পাওয়া যায়নি।</p>`;
     return;
   }
 
@@ -268,9 +308,21 @@ function renderUrlsList(urls) {
   });
 }
 
-function showError(msg) {
-  errorBanner.hidden = false;
-  errorText.textContent = msg;
+// 9. Toast Notification Handler (Dynamic, auto-dismissing)
+function showToast(msg, type = "error") {
+  if (!toastContainer) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${type === "error" ? "⚠️" : "✓"}</span> <span>${escapeHtml(msg)}</span>`;
+  toastContainer.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(10px)";
+    toast.style.transition = "all 0.3s ease";
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
 }
 
 function escapeHtml(str) {

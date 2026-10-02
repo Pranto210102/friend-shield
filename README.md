@@ -162,18 +162,22 @@ friend-shield/
 
 ---
 
-## 🖥️ Web User Interface
+## 🖥️ Web User Interface & Progressive Web App (PWA)
 
-Friend Shield includes a clean, professional web interface built with vanilla HTML, CSS, and JavaScript.
+Friend Shield includes a clean, professional web interface and installable mobile PWA built with vanilla HTML, CSS, and JavaScript.
 
 - **Instant Zero-Setup Access**: Once you start the backend (`npm run dev`), simply open **`http://localhost:8000`** in your browser! The backend serves the frontend statically out of the box.
-- **Standalone Access**: You can also open `frontend/index.html` directly or via any live server.
+- **Mobile-First & 100% Responsive**: Designed with mobile UX best practices—fluid layout, touch-friendly buttons ($\ge 44\text{px}$), and adaptive grids for smartphones and tablets.
+- **Installable PWA (Use Like a Mobile App)**:
+  - Supports standard **Add to Home Screen** on Android, iOS, and desktop browsers.
+  - Includes W3C Web App Manifest (`manifest.json`), high-resolution icons, and standalone launch mode without browser URL bars.
+  - Offline app shell cached via Service Worker (`sw.js`).
 - **1-Click Test Scenarios**: Includes instant demo buttons to test:
   - 🔴 *Fake bKash Bonus Scam*
   - 🔴 *Fake Nagad Cash Reward*
   - 🔴 *Raw IP / Login Phish*
   - 🟢 *Official Safe Link*
-- **Multilingual Explanations**: Interactive tab switcher to read the AI safety advice in **বাংলা (Bangla)**, **English**, or **Banglish**.
+- **Multilingual Explanations**: Interactive tab switcher to read AI safety advice in **বাংলা (Bangla)**, **English**, or **Banglish**.
 
 ---
 

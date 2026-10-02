@@ -1,13 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Friend Shield | Phishing & Scam Detector</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>Friend Shield | স্ক্যাম ও ফিশিং লিংক যাচাইকারী</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Friend Shield">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- App Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,21 +31,29 @@
         <span class="brand-icon">🛡️</span>
         <div>
           <h1 class="brand-title">Friend Shield <span class="brand-bn">ফ্রেন্ড শিল্ড</span></h1>
-          <p class="brand-subtitle">AI-Powered Scam & Phishing Link Detector</p>
+          <p class="brand-subtitle">AI Scam & Phishing Link Detector</p>
         </div>
       </div>
-      <div class="api-pill" id="api-status">
-        <span class="status-dot"></span>
-        <span class="status-text">Checking...</span>
+      <div class="header-actions">
+        <!-- PWA Install Button (shown when installable) -->
+        <button type="button" class="btn-install" id="btn-install" style="display: none;">
+          <span>📲</span>
+          <span class="btn-install-text">ইনস্টল করুন</span>
+        </button>
+        <!-- Server Status Pill -->
+        <div class="api-pill" id="api-status">
+          <span class="status-dot"></span>
+          <span class="status-text">যাচাই হচ্ছে...</span>
+        </div>
       </div>
     </header>
 
-    <!-- Main Scanner -->
+    <!-- Main Scanner Content -->
     <main class="main-content">
       <!-- Input Card -->
-      <section class="card">
+      <section class="card scanner-card">
         <div class="card-intro">
-          <h2>বার্তা বা লিংক পরীক্ষা করুন (Scan Message)</h2>
+          <h2>বার্তা বা লিংক পরীক্ষা করুন</h2>
           <p>সন্দেহজনক এসএমএস, হোয়াটসঅ্যাপ বার্তা বা লিংক পেস্ট করে দ্রুত যাচাই করুন।</p>
         </div>
 
@@ -78,7 +99,7 @@
         </form>
       </section>
 
-      <!-- Results Card (Hidden until scan) -->
+      <!-- Results Card (Hidden until scan finishes) -->
       <section class="card results-card" id="results-card" hidden>
         <!-- Top Verdict Banner -->
         <div class="verdict-card" id="verdict-banner">
@@ -126,11 +147,8 @@
         </div>
       </section>
 
-      <!-- Error Message -->
-      <div class="alert alert-error" id="error-banner" hidden>
-        <span>⚠️</span>
-        <span id="error-text">ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।</span>
-      </div>
+      <!-- Dynamic Toast Notification Container (Used only when an error actually occurs) -->
+      <div class="toast-container" id="toast-container"></div>
     </main>
 
     <!-- Clean Minimal Footer -->
