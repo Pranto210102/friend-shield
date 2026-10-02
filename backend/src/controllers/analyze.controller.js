@@ -178,7 +178,7 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
 /**
  * Controller to analyze a message, extract URLs, resolve redirects,
  * extract numeric features, run ONNX ML inference, query Safe Browsing,
- * and synthesize an empathetic, actionable explanation via Open-Source Gemma 2 LLM.
+ * and synthesize an empathetic, actionable explanation via Open-Source Qwen 3.8-27B LLM.
  */
 export async function analyzeMessage(req, res, next) {
   try {
@@ -328,7 +328,7 @@ export async function analyzeMessage(req, res, next) {
       }
     }
 
-    // 4. Generate AI Explanation in Bangla/English via Open-Source Gemma 2 LLM
+    // 4. Generate AI Explanation in Bangla/English via Open-Source Qwen 3.8-27B LLM
     let explanation = null;
     if (explain) {
       explanation = await generateSafetyExplanation({

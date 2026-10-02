@@ -1,10 +1,10 @@
 /**
  * Service to generate human-friendly, actionable explanations in Bangla, English, and Banglish
- * using Open-Source / Open-Weight Google Gemma 2 (Groq Cloud Inference or Local Ollama).
+ * using Open-Source / Open-Weight Open-Weight AI (Qwen) (Groq Cloud Inference or Local Ollama).
  */
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
-const GEMMA_LOCAL_MODEL = process.env.GEMMA_MODEL || "gemma2:2b";
+const OLLAMA_MODEL = process.env.GEMMA_MODEL || "gemma2:2b";
 
 /**
  * Robust JSON parser that handles pure JSON, markdown fences, and stray text.
@@ -204,16 +204,16 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 }
 `;
 
-  // 1. Tier 1: Cloud Google Gemma 2 Inference (via Groq Cloud LPU or OpenAI-Compatible Gemma Endpoint)
+  // 1. Tier 1: Cloud Open-Weight AI (Qwen) Inference (via Groq Cloud LPU or OpenAI-Compatible Gemma Endpoint)
   const apiKey = process.env.GEMMA_API_KEY || process.env.GROQ_API_KEY;
   const apiBase = process.env.GEMMA_API_BASE || "https://api.groq.com/openai/v1";
 
   if (apiKey && apiKey.trim()) {
     const candidateModels = [
       process.env.GEMMA_MODEL,
-      "gemma2-9b-it",
-      "google/gemma-2-9b-it",
-      "gemma-2-9b-it",
+      "qwen/qwen3.8-27b",
+      "qwen-2.5-7b-it",
+      "llama-3.1-8b-instant",
       "gemma-2-27b-it"
     ].filter(Boolean);
 
@@ -230,7 +230,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
             messages: [
               {
                 role: "system",
-                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Google Gemma 2. You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Open-Weight AI (Qwen). You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
               },
               {
                 role: "user",
@@ -249,26 +249,26 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
           const parsed = extractAndParseJson(content);
           const validated = validateExplanationPayload(parsed);
           if (validated) {
-            validated.source = `Google Gemma 2 (${model} via Cloud Inference)`;
+            validated.source = `Open-Weight AI (Qwen) (${model} via Cloud Inference)`;
             return validated;
           }
         } else {
           const errData = await groqRes.json().catch(() => ({}));
-          console.warn(`[Gemma Cloud ${model}] Warning:`, errData?.error?.message || groqRes.statusText);
+          console.warn(`[Cloud AI ${model}] Warning:`, errData?.error?.message || groqRes.statusText);
         }
       } catch (err) {
-        console.warn(`[Gemma Cloud ${model}] Request error:`, err.message);
+        console.warn(`[Cloud AI ${model}] Request error:`, err.message);
       }
     }
   }
 
-  // 2. Tier 2: Local Google Gemma 2 via Ollama (100% On-Device Local Privacy)
+  // 2. Tier 2: Local Open-Weight AI (Qwen) via Ollama (100% On-Device Local Privacy)
   try {
     const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: GEMMA_LOCAL_MODEL,
+        model: OLLAMA_MODEL,
         messages: [{ role: "user", content: prompt }],
         stream: false,
         format: "json"
@@ -282,7 +282,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
       const parsed = extractAndParseJson(content);
       const validated = validateExplanationPayload(parsed);
       if (validated) {
-        validated.source = `Google Gemma 2 (Local Ollama: ${GEMMA_LOCAL_MODEL})`;
+        validated.source = `Open-Weight AI (Qwen) (Local Ollama: ${OLLAMA_MODEL})`;
         return validated;
       }
     }
@@ -290,7 +290,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 
   // 3. Tier 3: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
   const fallback = generateFallbackExplanation(overallVerdict, urls);
-  fallback.source = "Deterministic fallback template (Gemma unavailable)";
+  fallback.source = "Deterministic fallback template (AI unavailable)";
   return fallback;
 }
 
