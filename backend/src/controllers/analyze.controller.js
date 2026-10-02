@@ -318,11 +318,19 @@ export async function analyzeMessage(req, res, next) {
       overallVerdict = "SUSPICIOUS";
     } else if (activeUrls.some((u) => u.riskAssessment?.verdict === "NEEDS_REVIEW")) {
       overallVerdict = "NEEDS_REVIEW";
+    } else if (activeUrls.length === 0) {
+      if (socialEngineering.riskLevel === "HIGH" || socialEngineering.riskLevel === "CRITICAL") {
+        overallVerdict = "HIGH_RISK";
+        overallThreatDetected = true;
+      } else if (socialEngineering.riskLevel === "MODERATE") {
+        overallVerdict = "SUSPICIOUS";
+        overallThreatDetected = true;
+      }
     }
 
     // 4. Generate AI Explanation in Bangla/English via Open-Source Gemma 2 LLM
     let explanation = null;
-    if (explain && activeUrls.length > 0) {
+    if (explain) {
       explanation = await generateSafetyExplanation({
         originalMessage: trimmedMessage,
         overallVerdict,

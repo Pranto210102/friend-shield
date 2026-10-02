@@ -74,8 +74,23 @@ function validateExplanationPayload(obj) {
  */
 function generateFallbackExplanation(overallVerdict, urls) {
   const isHighRisk = overallVerdict === "HIGH_RISK" || overallVerdict === "SUSPICIOUS";
+  const noUrls = !urls || urls.length === 0;
 
   if (isHighRisk) {
+    if (noUrls) {
+      return {
+        summary_bn: "⚠️ উচ্চ সতর্কতা! এই মেসেজটিতে স্ক্যাম বা জালিয়াতির লক্ষণ রয়েছে।",
+        explanation_bn: "১. মেসেজটিতে সন্দেহজনক আর্থিক প্রলোভন বা জরুরি অবস্থার ভীতি দেখানো হয়েছে।\n২. এটি একটি পরিচিত স্ক্যাম বা প্রতারণার ধরন হতে পারে।",
+        action_advice_bn: "১. নির্দেশিত কাজ করবেন না।\n২. আপনার পিন, ওটিপি বা পাসওয়ার্ড কারো সাথে শেয়ার করবেন না।",
+        summary_en: "⚠️ High Risk! This message contains strong social engineering scam indicators.",
+        explanation_en: "1. The message uses manipulative psychological tactics like financial bait or false urgency.\n2. This matches known patterns of fraudulent communications.",
+        action_advice_en: "1. Do not follow the message instructions.\n2. Never enter or share your PIN, OTP, or passwords.",
+        summary_banglish: "⚠️ High Risk! Ei message-e scam ba deception er lokkhon pawa geche.",
+        explanation_banglish: "1. Message-ti te suspicious financial offer ba bhoy dekhano hoyeche.\n2. Eta ekta fake ba scam text hote pare.",
+        action_advice_banglish: "1. Tader kotha shunben na.\n2. Apnar PIN ba OTP karo sathe share korben na.",
+        banglish_advice: "Kono vabei apnar PIN ba OTP share korben na."
+      };
+    }
     return {
       summary_bn: "⚠️ উচ্চ সতর্কতা! এই লিংকটিতে ফিশিং ও জালিয়াতির শক্তিশালী ঝুঁকি রয়েছে।",
       explanation_bn: "১. আমাদের নিরাপত্তা বিশ্লেষণ অনুযায়ী এই লিংকটিতে ব্র্যান্ড অনুকরণ বা ক্ষতিকর কাঠামো শনাক্ত হয়েছে।\n২. লিংকটি HTTP ব্যবহার করে, তাই এতে পাঠানো তথ্য সুরক্ষিতভাবে encrypted নাও থাকতে পারে।",
@@ -92,15 +107,15 @@ function generateFallbackExplanation(overallVerdict, urls) {
 
   return {
     summary_bn: "✅ প্রাথমিক সুরক্ষায় কোনো পরিচিত হুমকি পাওয়া যায়নি।",
-    explanation_bn: "১. গুগল সেফ ব্রাউজিং এবং লোকাল মেশিন লার্নিং মডেলে কোনো ক্ষতিকর সংকেত মেলেনি।\n২. বার্তাটি সাধারণ এবং স্বাভাবিক লেনদেন বা বার্তার মতো দেখাচ্ছে।",
-    action_advice_bn: "লিংকটি ব্যবহার করতে পারেন, তবে ব্যক্তিগত তথ্য বা পিন দেওয়ার আগে ওয়েবসাইটের ঠিকানা নিশ্চিত করে নিন।",
-    summary_en: "✅ No known threats detected based on current threat lists and local ML checks.",
-    explanation_en: "1. No known threats were found in reputation databases and structural ML features appear typical.\n2. The message structure matches expected patterns.",
-    action_advice_en: "Always double-check the browser address bar before submitting sensitive personal information.",
+    explanation_bn: "১. গুগল সেফ ব্রাউজিং এবং লোকাল স্ক্যানিং-এ কোনো ক্ষতিকর সংকেত মেলেনি।\n২. বার্তাটি সাধারণ এবং স্বাভাবিক লেনদেন বা বার্তার মতো দেখাচ্ছে।",
+    action_advice_bn: "ব্যক্তিগত তথ্য বা পিন দেওয়ার আগে সতর্ক থাকুন।",
+    summary_en: "✅ No known threats detected based on current threat lists and local checks.",
+    explanation_en: "1. No known threats were found in reputation databases and features appear typical.\n2. The message structure matches expected patterns.",
+    action_advice_en: "Always double-check before submitting sensitive personal information.",
     summary_banglish: "✅ Kono porichito threat ba risk pawa jayni.",
-    explanation_banglish: "1. Google Safe Browsing ebong Machine Learning model-e kono bipod ba risk pawa jayni.\n2. Message-ti shamogrik vabe safe ebong authentic mone hocche.",
-    action_advice_banglish: "Link-ti use korte paren, tobe personal information ba PIN deyar age website er domain thik ache kina check kore nin.",
-    banglish_advice: "Kono threat pawa jayni. Tobe kono personal information deyar age domain check kore nin."
+    explanation_banglish: "1. Model-e kono bipod ba risk pawa jayni.\n2. Message-ti shamogrik vabe safe ebong authentic mone hocche.",
+    action_advice_banglish: "Personal information ba PIN deyar age shob kichu check kore nin.",
+    banglish_advice: "Kono threat pawa jayni. Tobe kono personal information deyar age check kore nin."
   };
 }
 

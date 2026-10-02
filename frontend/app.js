@@ -657,16 +657,7 @@ async function runOcrOnCanvas(canvas) {
   if (typeof Tesseract === "undefined") {
     throw new Error("Tesseract OCR engine is not loaded.");
   }
-
-  const isHttp = window.location.protocol.startsWith("http");
-  const baseUrl = isHttp ? window.location.origin : "";
-  const options = isHttp
-    ? {
-        workerPath: `${baseUrl}/vendor/worker.min.js`,
-        corePath: `${baseUrl}/vendor/tesseract-core.wasm.js`,
-        langPath: `${baseUrl}/tessdata`
-      }
-    : {};
+  const options = {};
 
   function updateProgress(m) {
     if (m.status === "recognizing text" && typeof m.progress === "number") {
