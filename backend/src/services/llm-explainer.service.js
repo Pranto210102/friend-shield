@@ -144,48 +144,57 @@ Format strictly as a valid JSON object with the following keys:
 }
 `;
 
-  // 1. Tier 1: Cloud Open-Weight Gemma 2 via Groq (Primary for Cloud Deployment)
+  // 1. Tier 1: Cloud Open-Weight Model via Groq (Primary for Cloud Deployment)
   const groqApiKey = process.env.GROQ_API_KEY;
   if (groqApiKey && groqApiKey.trim()) {
-    try {
-      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${groqApiKey.trim()}`
-        },
-        body: JSON.stringify({
-          model: "gemma2-9b-it",
-          messages: [
-            {
-              role: "system",
-              content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant. You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
-            },
-            {
-              role: "user",
-              content: prompt
-            }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1
-        }),
-        signal: AbortSignal.timeout(10000)
-      });
+    const candidateModels = [
+      process.env.GROQ_MODEL,
+      "qwen/qwen3.8-27b",
+      "openai/gpt-oss-20b",
+      "gemma2-9b-it"
+    ].filter(Boolean);
 
-      if (groqRes.ok) {
-        const data = await groqRes.json();
-        const content = data.choices?.[0]?.message?.content;
-        const parsed = extractAndParseJson(content);
-        if (parsed) {
-          parsed.source = "Open-Source Gemma 2 (gemma2-9b-it on Groq)";
-          return parsed;
+    for (const model of candidateModels) {
+      try {
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${groqApiKey.trim()}`
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              {
+                role: "system",
+                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant. You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+              },
+              {
+                role: "user",
+                content: prompt
+              }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.1
+          }),
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          const content = data.choices?.[0]?.message?.content;
+          const parsed = extractAndParseJson(content);
+          if (parsed) {
+            parsed.source = `Open-Source AI (${model} on Groq)`;
+            return parsed;
+          }
+        } else {
+          const errData = await groqRes.json().catch(() => ({}));
+          console.warn(`[Groq ${model}] Warning:`, errData?.error?.message || groqRes.statusText);
         }
-      } else {
-        const errData = await groqRes.json().catch(() => ({}));
-        console.warn("[Groq Gemma-2] Warning:", errData?.error?.message || groqRes.statusText);
+      } catch (err) {
+        console.warn(`[Groq ${model}] Request error:`, err.message);
       }
-    } catch (err) {
-      console.warn("[Groq Gemma-2] Request error:", err.message);
     }
   }
 
