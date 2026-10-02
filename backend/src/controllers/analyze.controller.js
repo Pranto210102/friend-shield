@@ -1,3 +1,5 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { extractUrlsFromMessage } from "../services/url-extractor.service.js";
 import { resolveRedirects } from "../services/redirect-resolver.service.js";
 import { checkUrlsSafety } from "../services/safe-browsing.service.js";
@@ -266,6 +268,65 @@ export async function analyzeMessage(req, res, next) {
   }
 }
 
+/**
+ * Server-side OCR fallback endpoint for screenshot and image analysis.
+ * Extracts message text and URLs from an uploaded base64 screenshot.
+ */
+export async function extractImageText(req, res, next) {
+  try {
+    const { image } = req.body;
+    if (!image || typeof image !== "string") {
+      throw new ValidationError("Valid image data (base64 string) is required.");
+    }
+
+    // Convert data URL (e.g. data:image/png;base64,...) to Buffer
+    let base64Data = image;
+    const match = image.match(/^data:image\/[a-zA-Z0-9\+\-]+;base64,(.+)$/s);
+    if (match && match[1]) {
+      base64Data = match[1];
+    }
+    const buffer = Buffer.from(base64Data, "base64");
+
+    // Perform OCR using Tesseract.js in Node.js with local traineddata
+    const { default: Tesseract } = await import("tesseract.js");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const tessdataDir = path.resolve(__dirname, "../../../frontend/tessdata");
+
+    let rawText = "";
+    try {
+      const { data } = await Tesseract.recognize(buffer, "eng+ben", {
+        langPath: tessdataDir
+      });
+      rawText = data?.text?.trim() || "";
+    } catch (ocrErr) {
+      console.warn("Backend eng+ben OCR failed, falling back to eng:", ocrErr.message);
+      const { data } = await Tesseract.recognize(buffer, "eng", {
+        langPath: tessdataDir
+      });
+      rawText = data?.text?.trim() || "";
+    }
+
+    // Clean up excessive blank lines
+    const cleanedText = rawText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line, i, arr) => line.length > 0 || (i > 0 && arr[i - 1].length > 0))
+      .join("\n");
+
+    const urls = extractUrlsFromMessage(cleanedText);
+
+    return res.status(200).json({
+      success: true,
+      text: cleanedText,
+      urls,
+      hasText: cleanedText.length >= 3
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export default {
-  analyzeMessage
+  analyzeMessage,
+  extractImageText
 };

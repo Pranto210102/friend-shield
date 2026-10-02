@@ -27,11 +27,15 @@ app.use(
         scriptSrc: [
           "'self'",
           "'unsafe-inline'",
+          "'unsafe-eval'",
+          "'wasm-unsafe-eval'",
           "https://cdn.jsdelivr.net"
         ],
-        workerSrc: ["'self'", "blob:"],
+        workerSrc: ["'self'", "blob:", "data:"],
         connectSrc: [
           "'self'",
+          "data:",
+          "blob:",
           "https://cdn.jsdelivr.net",
           "https://tessdata.projectnaptha.com"
         ],
@@ -63,10 +67,10 @@ app.use(
 // Serve frontend UI statically on root
 app.use(express.static(frontendPath));
 
-// Body parser with size limits
+// Body parser with size limits (15MB to support screenshot image payloads)
 app.use(
   express.json({
-    limit: "100kb"
+    limit: "15mb"
   })
 );
 

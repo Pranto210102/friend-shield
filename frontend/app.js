@@ -508,7 +508,7 @@ function prepareCanvas(img) {
 }
 
 /**
- * Robust OCR extraction with local wasm/worker and eng+ben fallback
+ * Robust Client-Side OCR extraction with local wasm/worker, eng+ben fallback, and timeout protection
  */
 async function runOcrOnCanvas(canvas) {
   if (typeof Tesseract === "undefined") {
@@ -535,28 +535,36 @@ async function runOcrOnCanvas(canvas) {
     }
   }
 
-  // Attempt 1: Bengali + English bilingual OCR
-  try {
-    const res = await Tesseract.recognize(canvas, "eng+ben", {
+  const ocrPromise = (async () => {
+    try {
+      const res = await Tesseract.recognize(canvas, "eng+ben", {
+        ...options,
+        logger: updateProgress
+      });
+      const text = res?.data?.text?.trim();
+      if (text && text.length >= 4) return text;
+    } catch (err) {
+      console.warn("Client eng+ben failed, trying eng:", err);
+    }
+
+    const resEng = await Tesseract.recognize(canvas, "eng", {
       ...options,
       logger: updateProgress
     });
-    const text = res?.data?.text?.trim();
-    if (text && text.length >= 4) return text;
-  } catch (err) {
-    console.warn("eng+ben OCR attempt had issue, retrying with eng:", err);
-  }
+    return resEng?.data?.text?.trim() || "";
+  })();
 
-  // Attempt 2: English / Latin / URL OCR fallback
-  const resEng = await Tesseract.recognize(canvas, "eng", {
-    ...options,
-    logger: updateProgress
-  });
-  return resEng?.data?.text?.trim() || "";
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Client OCR timed out")), 5000)
+  );
+
+  return Promise.race([ocrPromise, timeoutPromise]);
 }
 
 /**
- * Main handler when an image file or pasted screenshot blob is received
+ * Main handler when an image file or pasted screenshot blob is received.
+ * Dual-Engine: First checks client QR code, then tries fast native server OCR,
+ * falling back to client-side WASM OCR if offline.
  */
 async function processImageFile(file) {
   if (!file || (!file.type.startsWith("image/") && !file.type.includes("octet-stream"))) {
@@ -599,11 +607,39 @@ async function processImageFile(file) {
       return;
     }
 
-    // 2. If no QR Code, run Screenshot OCR for message text & URLs
-    showMediaScanning("স্ক্রিনশটের মেসেজ ও লিংক পড়া হচ্ছে (OCR)...");
-    if (previewStatus) previewStatus.textContent = "টেক্সট পড়া হচ্ছে...";
+    // 2. If no QR Code, run OCR via Fast Native Server Endpoint
+    showMediaScanning("স্ক্রিনশটের মেসেজ ও লিংক পড়া হচ্ছে...");
+    if (previewStatus) previewStatus.textContent = "টেক্সট বিশ্লেষণ হচ্ছে...";
 
-    const extractedText = await runOcrOnCanvas(canvas);
+    let extractedText = "";
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/analyze/extract-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl })
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.text) {
+          extractedText = json.text;
+        }
+      }
+    } catch (serverOcrErr) {
+      console.warn("Server OCR unavailable, trying client-side fallback:", serverOcrErr);
+    }
+
+    // 3. Fallback to Client-Side WASM OCR if server was unavailable or returned empty
+    if (!extractedText && typeof Tesseract !== "undefined") {
+      if (previewStatus) previewStatus.textContent = "ব্রাউজার OCR-এ চেষ্টা করা হচ্ছে...";
+      try {
+        extractedText = await runOcrOnCanvas(canvas);
+      } catch (clientOcrErr) {
+        console.warn("Client OCR also failed or timed out:", clientOcrErr);
+      }
+    }
+
     hideMediaScanning();
 
     if (extractedText && extractedText.length >= 3) {

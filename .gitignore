@@ -29,6 +29,7 @@ lerna-debug.log*
 *.tar.gz
 *.gz
 !frontend/tessdata/*.gz
+*.traineddata
 ml-training/data/*.csv
 ml-training/data/*.tsv
 !ml-training/data/.gitkeep
