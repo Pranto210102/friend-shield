@@ -18,8 +18,37 @@ const frontendPath = path.resolve(__dirname, "../../frontend");
 
 app.disable("x-powered-by");
 
-// Basic security headers
-app.use(helmet());
+// Security headers configured for client-side WASM OCR, web workers, and fonts
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdn.jsdelivr.net"
+        ],
+        workerSrc: ["'self'", "blob:"],
+        connectSrc: [
+          "'self'",
+          "https://cdn.jsdelivr.net",
+          "https://tessdata.projectnaptha.com"
+        ],
+        imgSrc: ["'self'", "data:", "blob:"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com"
+        ],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        objectSrc: ["'none'"]
+      }
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  })
+);
 
 // Dynamic CORS configuration (allows local files, any localhost port, or specified CLIENT_URL)
 app.use(

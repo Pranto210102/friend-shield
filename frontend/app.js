@@ -29,6 +29,11 @@ const btnInstall = document.getElementById("btn-install");
 
 const imageUploadInput = document.getElementById("image-upload-input");
 const btnMediaUpload = document.getElementById("btn-media-upload");
+const imagePreviewCard = document.getElementById("image-preview-card");
+const previewImage = document.getElementById("preview-image");
+const previewFilename = document.getElementById("preview-filename");
+const previewStatus = document.getElementById("preview-status");
+const btnPreviewRemove = document.getElementById("btn-preview-remove");
 const mediaScanStatus = document.getElementById("media-scan-status");
 const mediaScanStatusText = document.getElementById("media-scan-status-text");
 
@@ -398,7 +403,9 @@ function renderSemiCard(semi) {
   }
 }
 
-// 11. Image, Screenshot & QR Code Scanner (jsQR + Tesseract.js)
+// 11. Image, Screenshot & QR Code Scanner (jsQR + Tesseract.js OCR)
+let currentPreviewObjectUrl = null;
+
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -431,107 +438,252 @@ function hideMediaScanning() {
   }
 }
 
+function showImagePreview(file) {
+  if (!imagePreviewCard || !previewImage) return;
+
+  if (currentPreviewObjectUrl) {
+    URL.revokeObjectURL(currentPreviewObjectUrl);
+    currentPreviewObjectUrl = null;
+  }
+
+  currentPreviewObjectUrl = URL.createObjectURL(file);
+  previewImage.src = currentPreviewObjectUrl;
+
+  const sizeKb = Math.round(file.size / 1024);
+  const name = file.name && file.name !== "image.png" ? file.name : `স্ক্রিনশট (${sizeKb} KB)`;
+  if (previewFilename) previewFilename.textContent = name;
+  if (previewStatus) previewStatus.textContent = "স্ক্যান করা হচ্ছে...";
+
+  imagePreviewCard.hidden = false;
+}
+
+function hideImagePreview() {
+  if (imagePreviewCard) {
+    imagePreviewCard.hidden = true;
+  }
+  if (currentPreviewObjectUrl) {
+    URL.revokeObjectURL(currentPreviewObjectUrl);
+    currentPreviewObjectUrl = null;
+  }
+  if (imageUploadInput) {
+    imageUploadInput.value = "";
+  }
+}
+
+if (btnPreviewRemove) {
+  btnPreviewRemove.addEventListener("click", () => {
+    hideImagePreview();
+    hideMediaScanning();
+  });
+}
+
+/**
+ * Preprocess image onto a canvas for OCR & QR decoding.
+ * Rescales large dimensions to max 1600px for fast recognition.
+ */
+function prepareCanvas(img) {
+  let width = img.width;
+  let height = img.height;
+  const maxDim = 1600;
+
+  if (width > maxDim || height > maxDim) {
+    if (width > height) {
+      height = Math.round((height * maxDim) / width);
+      width = maxDim;
+    } else {
+      width = Math.round((width * maxDim) / height);
+      height = maxDim;
+    }
+  } else if (width < 320 && height < 320) {
+    width *= 2;
+    height *= 2;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, width, height);
+  return { canvas, ctx };
+}
+
+/**
+ * Robust OCR extraction with local wasm/worker and eng+ben fallback
+ */
+async function runOcrOnCanvas(canvas) {
+  if (typeof Tesseract === "undefined") {
+    throw new Error("Tesseract OCR engine is not loaded.");
+  }
+
+  const isHttp = window.location.protocol.startsWith("http");
+  const baseUrl = isHttp ? window.location.origin : "";
+  const options = isHttp
+    ? {
+        workerPath: `${baseUrl}/vendor/worker.min.js`,
+        corePath: `${baseUrl}/vendor/tesseract-core.wasm.js`,
+        langPath: `${baseUrl}/tessdata`
+      }
+    : {};
+
+  function updateProgress(m) {
+    if (m.status === "recognizing text" && typeof m.progress === "number") {
+      const pct = Math.round(m.progress * 100);
+      showMediaScanning(`স্ক্রিনশটের লেখা পড়া হচ্ছে: ${pct}%`);
+      if (previewStatus) previewStatus.textContent = `OCR বিশ্লেষণ: ${pct}%`;
+    } else if (m.status) {
+      showMediaScanning(`${m.status}...`);
+    }
+  }
+
+  // Attempt 1: Bengali + English bilingual OCR
+  try {
+    const res = await Tesseract.recognize(canvas, "eng+ben", {
+      ...options,
+      logger: updateProgress
+    });
+    const text = res?.data?.text?.trim();
+    if (text && text.length >= 4) return text;
+  } catch (err) {
+    console.warn("eng+ben OCR attempt had issue, retrying with eng:", err);
+  }
+
+  // Attempt 2: English / Latin / URL OCR fallback
+  const resEng = await Tesseract.recognize(canvas, "eng", {
+    ...options,
+    logger: updateProgress
+  });
+  return resEng?.data?.text?.trim() || "";
+}
+
+/**
+ * Main handler when an image file or pasted screenshot blob is received
+ */
 async function processImageFile(file) {
-  if (!file || !file.type.startsWith("image/")) {
-    showToast("অনুগ্রহ করে একটি ছবি ফাইল সিলেক্ট করুন।", "error");
+  if (!file || (!file.type.startsWith("image/") && !file.type.includes("octet-stream"))) {
+    showToast("অনুগ্রহ করে একটি ছবি ফাইল সিলেক্ট বা পেস্ট করুন।", "error");
     return;
   }
 
+  showImagePreview(file);
   showMediaScanning("ছবি প্রস্তুত করা হচ্ছে...");
 
   try {
     const dataUrl = await readFileAsDataUrl(file);
     const img = await loadImage(dataUrl);
+    const { canvas, ctx } = prepareCanvas(img);
 
-    // Create an offscreen canvas
-    const canvas = document.createElement("canvas");
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0);
-
-    // 1. Try QR Code Decoding (Sub-15ms client-side decoding)
+    // 1. First, quickly check for QR Code (fastest ~15ms)
     showMediaScanning("কিউআর কোড (QR Code) খোঁজা হচ্ছে...");
     let qrData = null;
 
     if (typeof jsQR !== "undefined") {
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert"
-      });
-      if (code && code.data) {
-        qrData = code.data;
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert"
+        });
+        if (code && code.data) {
+          qrData = code.data.trim();
+        }
+      } catch (qrErr) {
+        console.warn("jsQR check skipped:", qrErr);
       }
     }
 
     if (qrData) {
       hideMediaScanning();
+      if (previewStatus) previewStatus.textContent = "✅ কিউআর কোড শনাক্ত হয়েছে";
       showToast("কিউআর কোড থেকে লিংক পাওয়া গেছে!", "success");
       messageInput.value = qrData;
       scanForm.requestSubmit();
       return;
     }
 
-    // 2. If no QR Code, run OCR via Tesseract.js (Extract text & URLs from screenshot)
-    if (typeof Tesseract !== "undefined") {
-      showMediaScanning("স্ক্রিনশটের লেখা ও লিংক পড়া হচ্ছে (OCR)...");
+    // 2. If no QR Code, run Screenshot OCR for message text & URLs
+    showMediaScanning("স্ক্রিনশটের মেসেজ ও লিংক পড়া হচ্ছে (OCR)...");
+    if (previewStatus) previewStatus.textContent = "টেক্সট পড়া হচ্ছে...";
 
-      const ocrResult = await Tesseract.recognize(canvas, "eng+ben", {
-        logger: (m) => {
-          if (m.status === "recognizing text" && m.progress) {
-            showMediaScanning(`লেখা পড়া হচ্ছে: ${Math.round(m.progress * 100)}%`);
-          }
-        }
-      });
+    const extractedText = await runOcrOnCanvas(canvas);
+    hideMediaScanning();
 
-      hideMediaScanning();
+    if (extractedText && extractedText.length >= 3) {
+      // Clean up multiple blank lines
+      const cleaned = extractedText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line, i, arr) => line.length > 0 || (i > 0 && arr[i - 1].length > 0))
+        .join("\n");
 
-      const extractedText = ocrResult?.data?.text?.trim();
-      if (extractedText && extractedText.length > 5) {
-        showToast("স্ক্রিনশট থেকে টেক্সট ও লিংক উদ্ধার করা হয়েছে!", "success");
-        messageInput.value = extractedText;
-        scanForm.requestSubmit();
-      } else {
-        showToast("ছবিটিতে কোনো স্পষ্ট টেক্সট বা কিউআর কোড পাওয়া যায়নি।", "error");
+      if (previewStatus) {
+        const words = cleaned.split(/\s+/).filter(Boolean).length;
+        previewStatus.textContent = `✅ টেক্সট পাওয়া গেছে (${words} শব্দ)`;
       }
+
+      showToast("স্ক্রিনশট থেকে মেসেজ টেক্সট উদ্ধার করা হয়েছে!", "success");
+      messageInput.value = cleaned;
+      scanForm.requestSubmit();
     } else {
-      hideMediaScanning();
-      showToast("কিউআর কোড পাওয়া যায়নি।", "error");
+      if (previewStatus) previewStatus.textContent = "⚠️ কোনো টেক্সট পাওয়া যায়নি";
+      showToast("ছবিটিতে কোনো স্পষ্ট মেসেজ টেক্সট বা কিউআর কোড পাওয়া যায়নি।", "warning");
     }
   } catch (err) {
     hideMediaScanning();
     console.error("Image processing error:", err);
-    showToast("ছবি বিশ্লেষণ করতে সমস্যা হয়েছে।", "error");
+    if (previewStatus) previewStatus.textContent = "❌ বিশ্লেষণ ব্যর্থ হয়েছে";
+    showToast("ছবি বিশ্লেষণ করতে সমস্যা হয়েছে। অনুগ্রহ করে মেসেজটি সরাসরি পেস্ট করুন।", "error");
   }
 }
 
-// File Upload Handler
+// File Upload Handler (file chooser input)
 if (imageUploadInput) {
   imageUploadInput.addEventListener("change", (e) => {
     const file = e.target.files?.[0];
     if (file) {
       processImageFile(file);
-      e.target.value = "";
     }
   });
 }
 
-// Clipboard Paste Handler (Ctrl+V anywhere on the page for screenshots)
-window.addEventListener("paste", (e) => {
-  const items = e.clipboardData?.items;
-  if (!items) return;
+// Clipboard Paste Handler (Ctrl+V anywhere on window or inside messageInput)
+function handleClipboardPaste(e) {
+  const clipboardData = e.clipboardData;
+  if (!clipboardData) return;
 
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].type.indexOf("image") !== -1) {
-      const file = items[i].getAsFile();
-      if (file) {
+  // 1. Check for files (e.g. copied image file or screenshot)
+  const files = clipboardData.files;
+  if (files && files.length > 0) {
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type && files[i].type.startsWith("image/")) {
         e.preventDefault();
-        processImageFile(file);
-        break;
+        e.stopPropagation();
+        processImageFile(files[i]);
+        return;
       }
     }
   }
-});
+
+  // 2. Check clipboard items (e.g. Win+Shift+S snipped image or copy image)
+  const items = clipboardData.items;
+  if (items && items.length > 0) {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type && items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          e.stopPropagation();
+          processImageFile(file);
+          return;
+        }
+      }
+    }
+  }
+}
+
+// Attach paste listeners on both textarea and window
+if (messageInput) {
+  messageInput.addEventListener("paste", handleClipboardPaste);
+}
+window.addEventListener("paste", handleClipboardPaste);
 
 // Drag & Drop Handler on Message Input Wrap
 const inputWrap = document.querySelector(".input-wrap");

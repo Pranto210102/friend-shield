@@ -23,9 +23,9 @@
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="style.css">
 
-  <!-- Client-Side QR Code & Screenshot OCR Decoders -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <!-- Client-Side QR Code & Screenshot OCR Decoders (Local Bundled) -->
+  <script src="vendor/jsqr.min.js"></script>
+  <script src="vendor/tesseract.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -99,7 +99,19 @@
               <span id="btn-media-upload-text">ছবি / কিউআর কোড স্ক্যান (Scan Image / QR)</span>
             </label>
             <input type="file" id="image-upload-input" accept="image/*" hidden />
-            <span class="paste-hint">অথবা ছবি পেস্ট করুন (<kbd>Ctrl</kbd> + <kbd>V</kbd>)</span>
+            <span class="paste-hint">অথবা স্ক্রিনশট পেস্ট করুন (<kbd>Ctrl</kbd> + <kbd>V</kbd>)</span>
+          </div>
+
+          <!-- Image Preview Thumbnail Strip -->
+          <div class="image-preview-card" id="image-preview-card" hidden>
+            <div class="preview-thumb-wrap">
+              <img id="preview-image" src="" alt="Pasted Screenshot Preview" />
+            </div>
+            <div class="preview-info">
+              <div class="preview-filename" id="preview-filename">স্ক্রিনশট সংযুক্ত করা হয়েছে</div>
+              <div class="preview-status" id="preview-status">টেক্সট বের করা হচ্ছে...</div>
+            </div>
+            <button type="button" class="btn-preview-remove" id="btn-preview-remove" title="ছবি সরান">✕</button>
           </div>
 
           <!-- Media OCR / QR Decoding Status -->
