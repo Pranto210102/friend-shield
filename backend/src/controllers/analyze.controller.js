@@ -4,6 +4,7 @@ import { checkUrlsSafety } from "../services/safe-browsing.service.js";
 import { extractUrlFeatures, isRecognizedLegitimateDomain } from "../services/feature-extractor.service.js";
 import { predictUrlRisk } from "../services/ml-predictor.service.js";
 import { generateSafetyExplanation } from "../services/llm-explainer.service.js";
+import { analyzeSocialEngineering } from "../services/social-engineering.service.js";
 import { ValidationError } from "../utils/errors.js";
 
 const MAX_MESSAGE_LENGTH = 10_000;
@@ -128,6 +129,9 @@ export async function analyzeMessage(req, res, next) {
     const urls = extractUrlsFromMessage(trimmedMessage);
     const activeUrls = urls.slice(0, MAX_URLS_TO_PROCESS);
 
+    // 0. Social Engineering Manipulation Index (SEMI)
+    const socialEngineering = analyzeSocialEngineering(trimmedMessage);
+
     // 1. Resolve shorteners / redirects if requested
     if (shouldResolve && activeUrls.length > 0) {
       const resolutionPromises = activeUrls.map((item) =>
@@ -242,6 +246,7 @@ export async function analyzeMessage(req, res, next) {
         originalMessage: trimmedMessage,
         overallVerdict,
         urls: activeUrls,
+        socialEngineering,
         language
       });
     }
@@ -252,6 +257,7 @@ export async function analyzeMessage(req, res, next) {
       urlCount: urls.length,
       threatDetected: overallThreatDetected,
       overallVerdict,
+      socialEngineering,
       explanation,
       urls: activeUrls
     });

@@ -80,6 +80,7 @@ export async function generateSafetyExplanation({
   originalMessage,
   overallVerdict,
   urls,
+  socialEngineering = null,
   language = "both"
 }) {
   const simplifiedUrls = (urls || []).map((u) => ({
@@ -100,6 +101,9 @@ You are 'Friend Shield' (ফ্রেন্ড শিল্ড), an expert, empa
 CONTEXT & TIME:
 - The current year is ${currentYear} (e.g. 2025, 2026). Dates with year ${currentYear} are CURRENT and NORMAL; NEVER claim dates from ${currentYear} are "in the future" or "fake dates".
 - Multi-Layer Security Engine Verdict: ${overallVerdict}
+- Social Engineering Manipulation Index: ${socialEngineering ? `${socialEngineering.riskLevel} (Score: ${socialEngineering.score}/100)` : "N/A"}
+- Psychological Vectors Detected:
+${JSON.stringify(socialEngineering?.vectors || [], null, 2)}
 - Scanned Link Data:
 ${JSON.stringify(simplifiedUrls, null, 2)}
 

@@ -27,6 +27,11 @@ const btnSubmit = document.getElementById("btn-submit");
 const btnSpinner = document.getElementById("btn-spinner");
 const btnInstall = document.getElementById("btn-install");
 
+const imageUploadInput = document.getElementById("image-upload-input");
+const btnMediaUpload = document.getElementById("btn-media-upload");
+const mediaScanStatus = document.getElementById("media-scan-status");
+const mediaScanStatusText = document.getElementById("media-scan-status-text");
+
 const apiStatus = document.getElementById("api-status");
 const resultsCard = document.getElementById("results-card");
 const toastContainer = document.getElementById("toast-container");
@@ -36,6 +41,11 @@ const verdictIcon = document.getElementById("verdict-icon");
 const verdictTitle = document.getElementById("verdict-title");
 const threatBadge = document.getElementById("threat-badge");
 const verdictDesc = document.getElementById("verdict-desc");
+
+const semiCard = document.getElementById("semi-card");
+const semiBadge = document.getElementById("semi-badge");
+const semiMeterBar = document.getElementById("semi-meter-bar");
+const semiVectors = document.getElementById("semi-vectors");
 
 const explanationBox = document.getElementById("explanation-box");
 const aiSource = document.getElementById("ai-source");
@@ -244,6 +254,9 @@ function renderResults(data) {
     aiActionBox.className = "action-box";
   }
 
+  // Render Social Engineering Manipulation Index (SEMI)
+  renderSemiCard(data.socialEngineering);
+
   // Render AI Explanation
   if (data.explanation) {
     explanationBox.hidden = false;
@@ -328,6 +341,223 @@ function showToast(msg, type = "error") {
     toast.style.transition = "all 0.3s ease";
     setTimeout(() => toast.remove(), 300);
   }, 4000);
+}
+
+// 10. Render Social Engineering Manipulation Index (SEMI)
+function renderSemiCard(semi) {
+  if (!semiCard) return;
+
+  if (!semi || semi.score === undefined) {
+    semiCard.hidden = true;
+    return;
+  }
+
+  semiCard.hidden = false;
+
+  const score = semi.score || 0;
+  const level = (semi.riskLevel || "MINIMAL").toLowerCase();
+
+  // Meter bar width
+  if (semiMeterBar) {
+    semiMeterBar.style.width = `${Math.max(5, score)}%`;
+  }
+
+  // Badge text and class
+  if (semiBadge) {
+    semiBadge.className = `semi-badge ${level}`;
+    let levelText = `ঝুঁকিমুক্ত (${score}%)`;
+    if (level === "critical") levelText = `উচ্চ ঝুঁকি (${score}%) - Critical Manipulation`;
+    else if (level === "high") levelText = `সতর্কতা (${score}%) - High Manipulation`;
+    else if (level === "moderate") levelText = `মাঝারি (${score}%) - Moderate`;
+
+    semiBadge.textContent = levelText;
+  }
+
+  // Vector pills
+  if (semiVectors) {
+    semiVectors.innerHTML = "";
+    const vectors = semi.vectors || [];
+
+    if (vectors.length === 0) {
+      semiVectors.innerHTML = `<span style="font-size: 0.8rem; color: #64748b;">কোনো স্পষ্ট মনস্তাত্ত্বিক চাপ বা প্রলোভন শনাক্ত হয়নি। (No manipulation triggers detected)</span>`;
+    } else {
+      vectors.forEach((v) => {
+        const pill = document.createElement("span");
+        pill.className = `semi-vector-pill ${v.vectorKey}`;
+        let icon = "⚠️";
+        if (v.vectorKey === "urgency") icon = "⏳";
+        if (v.vectorKey === "financialBait") icon = "🎁";
+        if (v.vectorKey === "authorityImpersonation") icon = "🏛️";
+        if (v.vectorKey === "credentialCoercion") icon = "🔑";
+
+        const matchesStr = v.matches && v.matches.length > 0 ? ` [${v.matches.slice(0, 2).join(", ")}]` : "";
+        pill.innerHTML = `<span>${icon}</span> <span>${escapeHtml(v.name_bn || v.name)}${escapeHtml(matchesStr)}</span>`;
+        semiVectors.appendChild(pill);
+      });
+    }
+  }
+}
+
+// 11. Image, Screenshot & QR Code Scanner (jsQR + Tesseract.js)
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function showMediaScanning(text) {
+  if (mediaScanStatus && mediaScanStatusText) {
+    mediaScanStatusText.textContent = text;
+    mediaScanStatus.hidden = false;
+  }
+}
+
+function hideMediaScanning() {
+  if (mediaScanStatus) {
+    mediaScanStatus.hidden = true;
+  }
+}
+
+async function processImageFile(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    showToast("অনুগ্রহ করে একটি ছবি ফাইল সিলেক্ট করুন।", "error");
+    return;
+  }
+
+  showMediaScanning("ছবি প্রস্তুত করা হচ্ছে...");
+
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
+    const img = await loadImage(dataUrl);
+
+    // Create an offscreen canvas
+    const canvas = document.createElement("canvas");
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+
+    // 1. Try QR Code Decoding (Sub-15ms client-side decoding)
+    showMediaScanning("কিউআর কোড (QR Code) খোঁজা হচ্ছে...");
+    let qrData = null;
+
+    if (typeof jsQR !== "undefined") {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: "dontInvert"
+      });
+      if (code && code.data) {
+        qrData = code.data;
+      }
+    }
+
+    if (qrData) {
+      hideMediaScanning();
+      showToast("কিউআর কোড থেকে লিংক পাওয়া গেছে!", "success");
+      messageInput.value = qrData;
+      scanForm.requestSubmit();
+      return;
+    }
+
+    // 2. If no QR Code, run OCR via Tesseract.js (Extract text & URLs from screenshot)
+    if (typeof Tesseract !== "undefined") {
+      showMediaScanning("স্ক্রিনশটের লেখা ও লিংক পড়া হচ্ছে (OCR)...");
+
+      const ocrResult = await Tesseract.recognize(canvas, "eng+ben", {
+        logger: (m) => {
+          if (m.status === "recognizing text" && m.progress) {
+            showMediaScanning(`লেখা পড়া হচ্ছে: ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      });
+
+      hideMediaScanning();
+
+      const extractedText = ocrResult?.data?.text?.trim();
+      if (extractedText && extractedText.length > 5) {
+        showToast("স্ক্রিনশট থেকে টেক্সট ও লিংক উদ্ধার করা হয়েছে!", "success");
+        messageInput.value = extractedText;
+        scanForm.requestSubmit();
+      } else {
+        showToast("ছবিটিতে কোনো স্পষ্ট টেক্সট বা কিউআর কোড পাওয়া যায়নি।", "error");
+      }
+    } else {
+      hideMediaScanning();
+      showToast("কিউআর কোড পাওয়া যায়নি।", "error");
+    }
+  } catch (err) {
+    hideMediaScanning();
+    console.error("Image processing error:", err);
+    showToast("ছবি বিশ্লেষণ করতে সমস্যা হয়েছে।", "error");
+  }
+}
+
+// File Upload Handler
+if (imageUploadInput) {
+  imageUploadInput.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+      e.target.value = "";
+    }
+  });
+}
+
+// Clipboard Paste Handler (Ctrl+V anywhere on the page for screenshots)
+window.addEventListener("paste", (e) => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf("image") !== -1) {
+      const file = items[i].getAsFile();
+      if (file) {
+        e.preventDefault();
+        processImageFile(file);
+        break;
+      }
+    }
+  }
+});
+
+// Drag & Drop Handler on Message Input Wrap
+const inputWrap = document.querySelector(".input-wrap");
+if (inputWrap) {
+  ["dragenter", "dragover"].forEach((eventName) => {
+    inputWrap.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      inputWrap.style.borderColor = "var(--primary)";
+      inputWrap.style.backgroundColor = "var(--primary-light)";
+    });
+  });
+
+  ["dragleave", "drop"].forEach((eventName) => {
+    inputWrap.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      inputWrap.style.borderColor = "";
+      inputWrap.style.backgroundColor = "";
+    });
+  });
+
+  inputWrap.addEventListener("drop", (e) => {
+    const files = e.dataTransfer?.files;
+    if (files && files[0] && files[0].type.startsWith("image/")) {
+      processImageFile(files[0]);
+    }
+  });
 }
 
 function escapeHtml(str) {

@@ -22,6 +22,10 @@
   
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="style.css">
+
+  <!-- Client-Side QR Code & Screenshot OCR Decoders -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -88,6 +92,22 @@
             <button type="button" class="btn-clear" id="btn-clear" title="মুছে ফেলুন">✕</button>
           </div>
 
+          <!-- Image / Screenshot / QR Code Upload Row -->
+          <div class="media-upload-bar">
+            <label for="image-upload-input" class="btn-media-upload" id="btn-media-upload" title="স্ক্রিনশট বা কিউআর কোড স্ক্যান করুন">
+              <span class="btn-icon">📷</span>
+              <span id="btn-media-upload-text">ছবি / কিউআর কোড স্ক্যান (Scan Image / QR)</span>
+            </label>
+            <input type="file" id="image-upload-input" accept="image/*" hidden />
+            <span class="paste-hint">অথবা ছবি পেস্ট করুন (<kbd>Ctrl</kbd> + <kbd>V</kbd>)</span>
+          </div>
+
+          <!-- Media OCR / QR Decoding Status -->
+          <div class="media-scan-status" id="media-scan-status" hidden>
+            <span class="spinner-small"></span>
+            <span id="media-scan-status-text">ছবি থেকে কিউআর কোড ও টেক্সট খোঁজা হচ্ছে...</span>
+          </div>
+
           <div class="form-bottom">
             <span class="shortcut-hint">শর্টকাট: <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
             <button type="submit" class="btn-submit" id="btn-submit">
@@ -111,6 +131,24 @@
             </div>
             <p class="verdict-desc" id="verdict-desc">কোনো পরিচিত হুমকি শনাক্ত হয়নি।</p>
           </div>
+        </div>
+
+        <!-- Social Engineering Manipulation Index (SEMI) Card -->
+        <div class="semi-card" id="semi-card" hidden>
+          <div class="semi-header">
+            <div class="semi-title-wrap">
+              <span class="semi-icon">🧠</span>
+              <div>
+                <h4>মনস্তাত্ত্বিক ফাঁদ বিশ্লেষণ (Social Engineering Index)</h4>
+                <div class="semi-subtitle">মেসেজের ভাষা ও মনস্তাত্ত্বিক কৌশলের ঝুঁকি মাত্রা</div>
+              </div>
+            </div>
+            <div class="semi-badge" id="semi-badge">0% Risk</div>
+          </div>
+          <div class="semi-meter-wrap">
+            <div class="semi-meter-bar" id="semi-meter-bar" style="width: 0%;"></div>
+          </div>
+          <div class="semi-vectors" id="semi-vectors"></div>
         </div>
 
         <!-- AI Advice Card -->
