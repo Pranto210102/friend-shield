@@ -17,6 +17,7 @@ const PRESET_MESSAGES = {
 
 let currentExplanation = null;
 let currentLanguage = "bn";
+let currentScanVerdict = null;
 let deferredInstallPrompt = null;
 
 // DOM Elements
@@ -150,6 +151,139 @@ messageInput.addEventListener("keydown", (e) => {
   }
 });
 
+// Multilingual dictionaries and transliteration helpers
+const VERDICT_I18N = {
+  HIGH_RISK: {
+    bn: {
+      title: "উচ্চ ঝুঁকি (HIGH RISK SCAM)",
+      badge: "বিপজ্জনক",
+      desc: "প্রতারণামূলক বা বিপজ্জনক লিংক শনাক্ত হয়েছে। কোনো লিংকে ক্লিক করবেন না।"
+    },
+    en: {
+      title: "High Risk Scam (DANGEROUS)",
+      badge: "High Risk",
+      desc: "Fraudulent or dangerous link detected. Do not click on any links."
+    },
+    banglish: {
+      title: "Uccho Jhnuki (HIGH RISK SCAM)",
+      badge: "Bipodjjonok",
+      desc: "Scam ba fake link pawa geche. Kono link-e click korben na."
+    }
+  },
+  SUSPICIOUS: {
+    bn: {
+      title: "সন্দেহজনক (SUSPICIOUS)",
+      badge: "সতর্কতা",
+      desc: "এই লিংকে অস্বাভাবিক লক্ষণ রয়েছে। সতর্ক থাকুন এবং তথ্য প্রদান এড়িয়ে চলুন।"
+    },
+    en: {
+      title: "Suspicious Activity (CAUTION)",
+      badge: "Suspicious",
+      desc: "Unusual patterns detected in this link. Exercise caution and do not submit personal info."
+    },
+    banglish: {
+      title: "Shondehojonok (SUSPICIOUS)",
+      badge: "Shotorkota",
+      desc: "Ei link-e oshawavabik lokkhon ache. Shotorko thakun ebong information deben na."
+    }
+  },
+  NEEDS_REVIEW: {
+    bn: {
+      title: "পর্যালোচনা প্রয়োজন (NEEDS REVIEW)",
+      badge: "যাচাই করুন",
+      desc: "কিছু সতর্কতামূলক লক্ষণ পাওয়া গেছে। বিস্তারিত দেখে নিশ্চিত হোন।"
+    },
+    en: {
+      title: "Needs Review (VERIFY)",
+      badge: "Review",
+      desc: "Potential cautionary indicators found. Verify carefully before proceeding."
+    },
+    banglish: {
+      title: "Jachai Kora Proyojon (NEEDS REVIEW)",
+      badge: "Check Korun",
+      desc: "Kichu shotorko shongket pawa geche. Bistarito dekhe confirm hon."
+    }
+  },
+  NO_KNOWN_THREAT: {
+    bn: {
+      title: "নিরাপদ (NO KNOWN THREAT)",
+      badge: "নিরাপদ প্রোফাইল",
+      desc: "কোনো ক্ষতিকর রেকর্ড বা নিরাপত্তা ঝুঁকি পাওয়া যায়নি।"
+    },
+    en: {
+      title: "Safe (NO KNOWN THREAT)",
+      badge: "Safe Profile",
+      desc: "No malicious patterns or security risks detected."
+    },
+    banglish: {
+      title: "Nirapod (NO KNOWN THREAT)",
+      badge: "Safe Profile",
+      desc: "Kono bipod ba security risk pawa jayni."
+    }
+  }
+};
+
+function hasBengaliChars(text) {
+  return /[\u0980-\u09FF]/.test(text || "");
+}
+
+function toBanglish(text) {
+  if (!text || typeof text !== "string") return "";
+
+  let str = text
+    .replace(/বিকাশ/g, "bKash")
+    .replace(/নগদ/g, "Nagad")
+    .replace(/বোনাস/g, "bonus")
+    .replace(/টাকা/g, "taka")
+    .replace(/লিংক/g, "link")
+    .replace(/লিংকে/g, "link-e")
+    .replace(/ক্লিক/g, "click")
+    .replace(/করবেন না/g, "korben na")
+    .replace(/করুন/g, "korun")
+    .replace(/পিন/g, "PIN")
+    .replace(/পাসওয়ার্ড/g, "password")
+    .replace(/ওটিপি/g, "OTP")
+    .replace(/অ্যাকাউন্ট|একাউন্ট/g, "account")
+    .replace(/নিরাপদ/g, "nirapod")
+    .replace(/বিপজ্জনক/g, "bipodjjonok")
+    .replace(/সন্দেহজনক/g, "shondehojonok")
+    .replace(/উচ্চ সতর্কতা/g, "High Alert")
+    .replace(/বার্তাটিতে/g, "message-e")
+    .replace(/বার্তা|মেসেজ/g, "message")
+    .replace(/ব্যক্তিগত তথ্য/g, "personal info")
+    .replace(/শেয়ার করবেন না/g, "share korben na");
+
+  const map = {
+    'অ': 'o', 'আ': 'a', 'ই': 'i', 'ঈ': 'i', 'উ': 'u', 'ঊ': 'u', 'ঋ': 'ri',
+    'এ': 'e', 'ঐ': 'oi', 'ও': 'o', 'ঔ': 'ou',
+    'ক': 'k', 'খ': 'kh', 'গ': 'g', 'ঘ': 'gh', 'ঙ': 'ng',
+    'চ': 'ch', 'ছ': 'chh', 'জ': 'j', 'ঝ': 'jh', 'ঞ': 'n',
+    'ট': 't', 'ঠ': 'th', 'ড': 'd', 'ঢ': 'dh', 'ণ': 'n',
+    'ত': 't', 'থ': 'th', 'দ': 'd', 'ধ': 'dh', 'ন': 'n',
+    'প': 'p', 'ফ': 'f', 'ব': 'b', 'ভ': 'bh', 'ম': 'm',
+    'য': 'j', 'র': 'r', 'ল': 'l', 'শ': 'sh', 'ষ': 'sh', 'স': 's', 'হ': 'h',
+    'ড়': 'r', 'ঢ়': 'rh', 'য়': 'y', 'ৎ': 't', 'ং': 'ng', 'ঃ': 'h', 'ঁ': '',
+    'া': 'a', 'ি': 'i', 'ী': 'i', 'ু': 'u', 'ূ': 'u', 'ৃ': 'ri',
+    'ে': 'e', 'ৈ': 'oi', 'ো': 'o', 'ৌ': 'ou', '্': '',
+    '১': '1', '২': '2', '৩': '3', '৪': '4', '৫': '5',
+    '৬': '6', '৭': '7', '৮': '8', '৯': '9', '০': '0', '।': '.'
+  };
+
+  return str.replace(/[\u0980-\u09FF]/g, (ch) => map[ch] || "");
+}
+
+function renderVerdictBanner(verdict, lang = currentLanguage) {
+  const i18n = VERDICT_I18N[verdict]?.[lang] || VERDICT_I18N[verdict]?.["bn"] || {
+    title: verdict,
+    badge: verdict,
+    desc: ""
+  };
+
+  verdictTitle.textContent = i18n.title;
+  threatBadge.textContent = i18n.badge;
+  verdictDesc.textContent = i18n.desc;
+}
+
 // 5. Language Switcher Tabs
 langTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -157,6 +291,9 @@ langTabs.forEach((tab) => {
     tab.classList.add("active");
     currentLanguage = tab.dataset.lang;
     renderExplanationLanguage();
+    if (currentScanVerdict) {
+      renderVerdictBanner(currentScanVerdict, currentLanguage);
+    }
   });
 });
 
@@ -174,10 +311,24 @@ function renderExplanationLanguage() {
     actionHeading.textContent = "Recommended Action:";
     aiActionText.textContent = currentExplanation.action_advice_en || currentExplanation.action_advice_bn || "";
   } else if (currentLanguage === "banglish") {
-    aiSummary.textContent = currentExplanation.summary_en || currentExplanation.summary_bn || "";
-    aiPoints.innerHTML = (currentExplanation.explanation_bn || currentExplanation.explanation_en || "").replace(/\n/g, "<br>");
-    actionHeading.textContent = "Ki Korben (Banglish Advice):";
-    aiActionText.textContent = currentExplanation.banglish_advice || currentExplanation.action_advice_bn || "";
+    let s = currentExplanation.summary_banglish || currentExplanation.banglish_advice || "";
+    if (!s || hasBengaliChars(s)) {
+      s = toBanglish(currentExplanation.summary_bn || currentExplanation.summary_en || "");
+    }
+    aiSummary.textContent = s;
+
+    let p = currentExplanation.explanation_banglish || "";
+    if (!p || hasBengaliChars(p)) {
+      p = toBanglish(currentExplanation.explanation_bn || currentExplanation.explanation_en || "");
+    }
+    aiPoints.innerHTML = p.replace(/\n/g, "<br>");
+
+    actionHeading.textContent = "Ki Korben (Banglish Action Advice):";
+    let a = currentExplanation.action_advice_banglish || currentExplanation.banglish_advice || "";
+    if (!a || hasBengaliChars(a)) {
+      a = toBanglish(currentExplanation.action_advice_bn || currentExplanation.action_advice_en || "");
+    }
+    aiActionText.textContent = a;
   }
 }
 
@@ -226,38 +377,30 @@ function renderResults(data) {
   resultsCard.hidden = false;
 
   const verdict = data.overallVerdict || (data.threatDetected ? "HIGH_RISK" : "NO_KNOWN_THREAT");
+  currentScanVerdict = verdict;
 
-  // Style verdict banner
+  // Style verdict banner container classes
   verdictBanner.className = "verdict-card";
   if (verdict === "HIGH_RISK") {
     verdictBanner.classList.add("danger");
     verdictIcon.textContent = "🚨";
-    verdictTitle.textContent = "উচ্চ ঝুঁকি (HIGH RISK SCAM)";
-    threatBadge.textContent = "বিপজ্জনক";
-    verdictDesc.textContent = "প্রতারণামূলক বা বিপজ্জনক লিংক শনাক্ত হয়েছে। কোনো লিংকে ক্লিক করবেন না।";
     aiActionBox.className = "action-box danger";
   } else if (verdict === "SUSPICIOUS") {
     verdictBanner.classList.add("warning");
     verdictIcon.textContent = "⚠️";
-    verdictTitle.textContent = "সন্দেহজনক (SUSPICIOUS)";
-    threatBadge.textContent = "সতর্কতা";
-    verdictDesc.textContent = "এই লিংকে অস্বাভাবিক লক্ষণ রয়েছে। সতর্ক থাকুন এবং তথ্য প্রদান এড়িয়ে চলুন।";
     aiActionBox.className = "action-box";
   } else if (verdict === "NEEDS_REVIEW") {
     verdictBanner.classList.add("warning");
     verdictIcon.textContent = "🔍";
-    verdictTitle.textContent = "পর্যালোচনা প্রয়োজন (NEEDS REVIEW)";
-    threatBadge.textContent = "যাচাই করুন";
-    verdictDesc.textContent = "কিছু সতর্কতামূলক লক্ষণ পাওয়া গেছে। বিস্তারিত দেখে নিশ্চিত হোন।";
     aiActionBox.className = "action-box";
   } else {
     verdictBanner.classList.add("safe");
     verdictIcon.textContent = "🛡️";
-    verdictTitle.textContent = "নিরাপদ (NO KNOWN THREAT)";
-    threatBadge.textContent = "নিরাপদ প্রোফাইল";
-    verdictDesc.textContent = "কোনো ক্ষতিকর রেকর্ড বা নিরাপত্তা ঝুঁকি পাওয়া যায়নি।";
     aiActionBox.className = "action-box";
   }
+
+  // Render localized text for verdict banner
+  renderVerdictBanner(currentScanVerdict, currentLanguage);
 
   // Render Social Engineering Manipulation Index (SEMI)
   renderSemiCard(data.socialEngineering);

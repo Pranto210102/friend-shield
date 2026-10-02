@@ -46,22 +46,28 @@ function generateFallbackExplanation(overallVerdict, urls) {
   if (isHighRisk) {
     return {
       summary_bn: "⚠️ উচ্চ সতর্কতা! এই বার্তাটিতে সন্দেহজনক বা বিপজ্জনক লিংক পাওয়া গেছে।",
-      explanation_bn: "আমাদের নিরাপত্তা বিশ্লেষণ অনুযায়ী এই লিংকটি ব্যক্তিগত তথ্য বা আর্থিক অ্যাকাউন্ট হাতিয়ে নেওয়ার জন্য তৈরি হতে পারে।",
+      explanation_bn: "১. আমাদের নিরাপত্তা বিশ্লেষণ অনুযায়ী এই লিংকটি ব্যক্তিগত তথ্য বা আর্থিক অ্যাকাউন্ট হাতিয়ে নেওয়ার জন্য তৈরি হতে পারে।\n২. লিংকের ডোমেইন বা কাঠামো সন্দেহজনক।",
       action_advice_bn: "১. কোনো অবস্থাতেই এই লিংকে ক্লিক করবেন না।\n২. আপনার বিকাশ/নগদ পিন, ওটিপি বা পাসওয়ার্ড কারো সাথে শেয়ার করবেন না।",
       summary_en: "⚠️ High Risk! A suspicious or fraudulent link was detected in this message.",
-      explanation_en: "Security analysis identified deceptive patterns (such as brand impersonation or unencrypted pathways) designed to steal credentials.",
+      explanation_en: "1. Security analysis identified deceptive patterns (such as brand impersonation or unencrypted pathways) designed to steal credentials.\n2. The link does not match official banking servers.",
       action_advice_en: "1. Do not click the link.\n2. Never enter your PIN, OTP, or passwords.\n3. Verify offers exclusively through official apps.",
+      summary_banglish: "⚠️ High Risk! Ei message-e biphodjjonok ba scam link pawa geche.",
+      explanation_banglish: "1. Security analysis-e ei link-e brand impersonation ba fake offer er lokkhon pawa geche.\n2. Link-ti official domain noy, eta apnar password ba PIN churi korte pare.",
+      action_advice_banglish: "1. Kono vabei ei link-e click korben na.\n2. Apnar bKash ba Nagad PIN/OTP karo sathe share korben na.\n3. Shob offer shudhumatro official app theke verify korun.",
       banglish_advice: "Ei link-e click korben na. Kono vabei bKash ba Nagad PIN/OTP share korben na. Eta scam hote pare."
     };
   }
 
   return {
     summary_bn: "✅ প্রাথমিক সুরক্ষায় কোনো পরিচিত হুমকি পাওয়া যায়নি।",
-    explanation_bn: "গুগল সেফ ব্রাউজিং এবং লোকাল মেশিন লার্নিং মডেলে কোনো ক্ষতিকর সংকেত মেলেনি। তবে অনলাইনে অপরিচিত লিংকে সতর্ক থাকা উচিত।",
+    explanation_bn: "১. গুগল সেফ ব্রাউজিং এবং লোকাল মেশিন লার্নিং মডেলে কোনো ক্ষতিকর সংকেত মেলেনি।\n২. বার্তাটি সাধারণ এবং স্বাভাবিক লেনদেন বা বার্তার মতো দেখাচ্ছে।",
     action_advice_bn: "লিংকটি ব্যবহার করতে পারেন, তবে ব্যক্তিগত তথ্য বা পিন দেওয়ার আগে ওয়েবসাইটের ঠিকানা নিশ্চিত করে নিন।",
     summary_en: "✅ No known threats detected based on current threat lists and local ML checks.",
-    explanation_en: "No known threats were found in reputation databases and structural ML features appear typical. Always remain cautious when entering credentials.",
+    explanation_en: "1. No known threats were found in reputation databases and structural ML features appear typical.\n2. The message structure matches expected patterns.",
     action_advice_en: "Always double-check the browser address bar before submitting sensitive personal information.",
+    summary_banglish: "✅ Kono porichito threat ba risk pawa jayni.",
+    explanation_banglish: "1. Google Safe Browsing ebong Machine Learning model-e kono bipod ba risk pawa jayni.\n2. Message-ti shamogrik vabe safe ebong authentic mone hocche.",
+    action_advice_banglish: "Link-ti use korte paren, tobe personal information ba PIN deyar age website er domain thik ache kina check kore nin.",
     banglish_advice: "Kono threat pawa jayni. Tobe kono personal information deyar age domain check kore nin."
   };
 }
@@ -136,7 +142,7 @@ ${
 }
 
 Output format:
-Format strictly as a valid JSON object with the following keys:
+Format strictly as a valid JSON object with the following keys. IMPORTANT: For all "banglish" keys, you MUST write natural Bengali using ONLY English/Latin alphabet. NEVER use Bengali script characters in any banglish fields:
 {
   "summary_bn": "খুব সংক্ষিপ্ত এক লাইনে ফলাফল (বাংলা)",
   "explanation_bn": "সহজ পয়েন্ট-ভিত্তিক ব্যাখ্যা (১. ..., ২. ...) (বাংলা)",
@@ -144,7 +150,10 @@ Format strictly as a valid JSON object with the following keys:
   "summary_en": "One-line clear summary (English)",
   "explanation_en": "Simple, point-based explanation (English)",
   "action_advice_en": "Clear action advice (English)",
-  "banglish_advice": "Short, natural advice in Banglish (Bengali in English alphabet)"
+  "summary_banglish": "One-line clear summary entirely in natural Banglish (Bengali written in English alphabet, e.g. 'Eta ekta biphodjjonok fake scam link, konovabei click korben na.')",
+  "explanation_banglish": "Point-based explanation entirely in natural Banglish (Bengali written in English alphabet, e.g. '1. Link-ti official domain noy.\\n2. Fake bonus er kotha bole taka churi korar chesta.\\n3. Link-ti secure noy tai password churi hote pare.')",
+  "action_advice_banglish": "Action advice entirely in natural Banglish (Bengali written in English alphabet, e.g. '1. Kono vabei link-e click korben na.\\n2. bKash ba Nagad PIN/OTP karo sathe share korben na.\\n3. Message-ti report kore delete kore din.')",
+  "banglish_advice": "Short advice in Banglish"
 }
 `;
 
