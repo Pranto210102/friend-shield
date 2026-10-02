@@ -1,12 +1,13 @@
 # 🛡️ Friend Shield
 
-> **Multi-Layer Phishing & Scam Detection Engine with Local ML Inference, Safe Redirect Expansion, and Google Safe Browsing Threat Intelligence.**
+> **Multi-Layer Phishing & Scam Detection Engine with Local ML Inference, Safe Redirect Expansion, Google Safe Browsing, and Gemini Multilingual AI Explanations.**
 
 [![Node.js](https://img.shields.io/badge/Node.js-v20+-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-v5.2-black.svg)](https://expressjs.com/)
 [![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-v1.30-blue.svg)](https://onnxruntime.ai/)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-v1.9-orange.svg)](https://scikit-learn.org/)
-[![Safe Browsing](https://img.shields.io/badge/Google_Safe_Browsing-v4-red.svg)](https://developers.google.com/safe-browsing)
+[![Google Safe Browsing](https://img.shields.io/badge/Google_Safe_Browsing-v4-red.svg)](https://developers.google.com/safe-browsing)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-3.1_Flash_Lite-8e7cc3.svg)](https://aistudio.google.com/)
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-ff69b4.svg)](https://hacktoberfest.com/)
 
 ---
@@ -19,12 +20,13 @@ Every day, millions of users receive deceptive links through SMS, WhatsApp, Mess
 1. **Reputation Blacklists Alone (Google Safe Browsing)**: Highly accurate for known threats, but suffer from **zero-day latency**—newly registered phishing links often remain active for several hours before landing on threat lists.
 2. **Pure Machine Learning Alone**: High false-positive rates when tested across diverse domains; prone to dataset sampling bias.
 3. **URL Shorteners**: Attackers routinely disguise destinations using services like `bit.ly` or `tinyurl.com` to bypass basic keyword filters.
+4. **The Communication Gap**: Everyday users do not understand technical terms like *"Heuristics 0.81"* or *"Punycode Spoofing"*. They need plain-language advice: **Is it fake? Why is it fake? And what should I do?**
 
 ---
 
 ## 💡 The Friend Shield Solution
 
-Friend Shield implements an **evidence-based, multi-layer defense pipeline** running entirely within an Express backend. It pairs real-time blacklist checks with **sub-millisecond local ML inference (ONNX Runtime)** and **deterministic brand impersonation heuristics**, safe redirect unshortening, and full SSRF protection.
+Friend Shield implements an **evidence-based, multi-layer defense pipeline** running entirely within an Express backend. It pairs real-time blacklist checks with **sub-millisecond local ML inference (ONNX Runtime)**, **deterministic brand impersonation heuristics**, safe redirect unshortening, and **Google Gemini multilingual explanations in Bangla, English, and Banglish**.
 
 ```mermaid
 flowchart TD
@@ -37,7 +39,8 @@ flowchart TD
     E --> H["7. Evidence-Based Decision Policy"]
     F --> H
     G --> H
-    H --> I["Actionable Verdict & Signals\n(HIGH_RISK | SUSPICIOUS | NEEDS_REVIEW | NO_KNOWN_THREAT)"]
+    H --> I["8. Gemini AI Explanation Engine\n(Bangla, English & Banglish)"]
+    I --> J["Actionable Verdict & Safety Advice\n(HIGH_RISK | SUSPICIOUS | NEEDS_REVIEW | NO_KNOWN_THREAT)"]
 ```
 
 ---
@@ -48,6 +51,10 @@ flowchart TD
   - Eliminates the need for a secondary Python server at runtime.
   - Random Forest classifier trained on 150,000 balanced URLs from Kaggle's 650k dataset.
   - **Empirical Inference Latency: 0.2 ms – 0.7 ms** per URL.
+- **Multilingual AI Safety Explanations (Google Gemini)**:
+  - Synthesizes scan evidence into clear, empathetic, non-technical advice in **Bangla, English, and Banglish**.
+  - Explicitly warns users never to share MFS PINs or OTPs when scams are detected.
+  - Automatic graceful fallback to local rule-based templates if offline or unconfigured.
 - **Regional MFS Brand Impersonation Detection**:
   - Identifies lookalike links spoofing **bKash, Nagad, Upay, Daraz, Apple/iCloud, and PayPal**.
   - Flags spoofed domains immediately (e.g., `http://bkash-bonus.xyz` $\rightarrow$ `HIGH_RISK`).
@@ -61,7 +68,7 @@ flowchart TD
   - Uses realistic, judge-proof verdicts: **`HIGH_RISK`**, **`SUSPICIOUS`**, **`NEEDS_REVIEW`**, or **`NO_KNOWN_THREAT`**.
   - Never makes unsubstantiated claims like *"100% safe"*.
 - **Production Defense & Rate Limiting**:
-  - Hardened with `helmet`, dynamic CORS configuration, and dual-layer rate limiting via `express-rate-limit` (general API limiter + strict outbound resolver limiter).
+  - Hardened with `helmet`, dynamic CORS configuration, and dual-layer rate limiting via `express-rate-limit`.
 
 ---
 
@@ -116,6 +123,8 @@ friend-shield/
 │   │   ├── services/
 │   │   │   ├── feature-extractor.service.js # 17 numerical features + signals
 │   │   │   ├── feature-extractor.test.js    # Automated unit tests
+│   │   │   ├── llm-explainer.service.js     # Gemini AI multilingual explainer
+│   │   │   ├── llm-explainer.test.js        # Explainer unit test
 │   │   │   ├── ml-predictor.service.js      # ONNX Runtime inference engine
 │   │   │   ├── redirect-resolver.service.js # Hop-by-hop unshortener + SSRF check
 │   │   │   ├── safe-browsing.service.js     # Google Safe Browsing API client
@@ -126,6 +135,7 @@ friend-shield/
 │   │   ├── app.js                       # Express app configuration & middleware
 │   │   └── server.js                    # Server entry point
 │   ├── .env                             # Environment configuration (API keys, ports)
+│   ├── .env.example                     # Environment template
 │   └── package.json
 │
 ├── ml-training/                         # Isolated Machine Learning Pipeline
@@ -141,6 +151,7 @@ friend-shield/
 │   ├── requirements.txt                 # Python dependencies (scikit-learn, skl2onnx)
 │   └── README.md
 │
+├── .gitignore                           # Git ignore rules (secrets, datasets, cache)
 └── README.md                            # Main project documentation
 ```
 
@@ -153,6 +164,7 @@ friend-shield/
 - **npm**: v10+
 - **Python**: v3.10+ (Only required if retraining the ML model)
 - **Google Safe Browsing API Key**: (Free tier allows 10,000 requests/day)
+- **Google Gemini API Key**: (Free tier allows 1,500 requests/day on Google AI Studio)
 
 ---
 
@@ -169,16 +181,17 @@ friend-shield/
    ```
 
 3. **Configure Environment Variables**:
-   Create a `.env` file in `backend/`:
+   Create a `.env` file in `backend/` (or copy from `.env.example`):
    ```env
    PORT=8000
    CLIENT_URL=http://localhost:5173
    GOOGLE_SAFE_BROWSING_KEY=your_google_safe_browsing_api_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
 4. **Start the API server**:
    ```bash
-   # Development (with auto-reload)
+   # Development (with nodemon auto-reload)
    npm run dev
 
    # Production
@@ -189,23 +202,10 @@ friend-shield/
 
 ---
 
-### (Optional) Retraining the ML Model
+## 📖 API Documentation & Real Response
 
-The trained `phishing_model.onnx` is already included. If you wish to retrain or experiment with new datasets:
-
-```bash
-cd ml-training
-pip install -r requirements.txt
-python src/train.py
-```
-*The script automatically trains the classifier, outputs performance metrics, and exports the updated `.onnx` model directly into `backend/models/`.*
-
----
-
-## 📖 API Documentation & Examples
-
-### 1. Analyze Message (Full Pipeline)
-Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google Safe Browsing, runs ONNX ML inference, and outputs deterministic risk signals.
+### Analyze Message (Full Pipeline + Gemini AI Explanation)
+Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google Safe Browsing, runs ONNX ML inference, outputs deterministic risk signals, and generates a plain-language explanation in Bangla, English, and Banglish.
 
 - **Endpoint**: `POST /api/analyze/message`
 - **Headers**: `Content-Type: application/json`
@@ -213,9 +213,10 @@ Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google 
 #### Request:
 ```json
 {
-  "message": "Click to claim your prize http://bkash-eid-bonus.xyz/claim and check https://google.com",
+  "message": "অভিনন্দন! আপনি জিতেছেন নগদ ৫,০০০ টাকা। পেতে ক্লিক করুন: http://nagad-cash-bonus.site/claim",
   "resolveRedirects": true,
-  "checkThreats": true
+  "checkThreats": true,
+  "explain": true
 }
 ```
 
@@ -223,13 +224,24 @@ Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google 
 ```json
 {
   "success": true,
-  "messageLength": 87,
-  "urlCount": 2,
+  "messageLength": 88,
+  "urlCount": 1,
   "threatDetected": true,
+  "overallVerdict": "HIGH_RISK",
+  "explanation": {
+    "summary_bn": "এটি একটি প্রতারণামূলক লিঙ্ক, এতে ক্লিক করা অত্যন্ত ঝুঁকিপূর্ণ।",
+    "explanation_bn": "১. এটি নগদ-এর অফিসিয়াল ওয়েবসাইট নয়, বরং প্রতারকরা আপনার তথ্য চুরি করার জন্য এটি তৈরি করেছে। ২. এই লিঙ্কে কোনো নিরাপত্তা ব্যবস্থা নেই, যা আপনার ফোনের তথ্যের জন্য বিপজ্জনক। ৩. লটারি বা বোনাসের প্রলোভন দেখিয়ে সাধারণত হ্যাকাররা প্রতারণা করে থাকে।",
+    "action_advice_bn": "এই লিঙ্কে ভুলেও ক্লিক করবেন না। আপনার নগদ বা অন্য কোনো অ্যাকাউন্টের পিন (PIN), ওটিপি (OTP) বা পাসওয়ার্ড কাউকে দেবেন না। মেসেজটি সাথে সাথে ডিলিট করে দিন।",
+    "summary_en": "This is a fraudulent link and is highly dangerous.",
+    "explanation_en": "1. This is not an official Nagad website; scammers created it to steal your information. 2. The link lacks basic security, making it unsafe for your device. 3. Lottery or bonus offers are common traps used by scammers.",
+    "action_advice_en": "Do not click the link under any circumstances. Never share your PIN, OTP, or password with anyone. Delete the message immediately.",
+    "banglish_advice": "Ei link-e click korben na, eta ekta scam. Apnar PIN ba OTP karo sathe share korben na. Message-ti delete kore din.",
+    "source": "Gemini AI (gemini-3.1-flash-lite)"
+  },
   "urls": [
     {
-      "original": "http://bkash-eid-bonus.xyz/claim",
-      "normalized": "http://bkash-eid-bonus.xyz/claim",
+      "original": "http://nagad-cash-bonus.site/claim",
+      "normalized": "http://nagad-cash-bonus.site/claim",
       "safeBrowsing": {
         "knownThreatFound": false,
         "isSafe": true,
@@ -238,132 +250,22 @@ Analyzes chat messages, extracts all URLs, unshortens redirects, queries Google 
       },
       "signals": [
         "The connection is unencrypted (HTTP).",
-        "The URL path or query contains sensitive keywords: [claim].",
-        "Brand impersonation detected: The URL mimics 'bKash', but does not belong to the official 'bkash.com' domain."
+        "Brand impersonation detected: The URL mimics 'Nagad', but does not belong to the official 'nagad.com.bd' domain."
       ],
       "ml": {
-        "probability": 0.8124,
+        "probability": 0.863,
         "label": "malicious",
-        "inferenceTimeMs": 0.32
+        "inferenceTimeMs": 0.35
       },
       "riskAssessment": {
         "verdict": "HIGH_RISK",
         "confidence": "high",
         "reason": "High-risk pattern detected (e.g. brand impersonation, raw IP, HTTPS downgrade, or @ symbol disguise)."
       }
-    },
-    {
-      "original": "https://google.com",
-      "normalized": "https://google.com/",
-      "safeBrowsing": {
-        "knownThreatFound": false,
-        "isSafe": true,
-        "threats": [],
-        "source": "Google Safe Browsing"
-      },
-      "signals": [],
-      "ml": {
-        "probability": 0.0551,
-        "label": "safe",
-        "inferenceTimeMs": 0.28
-      },
-      "riskAssessment": {
-        "verdict": "NO_KNOWN_THREAT",
-        "confidence": "low_to_medium",
-        "reason": "No known threats found in Safe Browsing and local ML indicates low risk. (Does not guarantee 100% safety)."
-      }
     }
   ]
 }
 ```
-
----
-
-### 2. Resolve URL Redirects (Unshortener)
-Expands a shortened URL safely hop-by-hop with loop detection and SSRF defense.
-
-- **Endpoint**: `POST /api/redirects/resolve`
-
-#### Request:
-```json
-{
-  "url": "https://httpbin.org/redirect/2"
-}
-```
-
-#### Response:
-```json
-{
-  "success": true,
-  "data": {
-    "originalUrl": "https://httpbin.org/redirect/2",
-    "finalUrl": "https://httpbin.org/get",
-    "status": 200,
-    "redirectCount": 2,
-    "redirects": [
-      {
-        "status": 302,
-        "from": "https://httpbin.org/redirect/2",
-        "to": "https://httpbin.org/relative-redirect/1"
-      },
-      {
-        "status": 302,
-        "from": "https://httpbin.org/relative-redirect/1",
-        "to": "https://httpbin.org/get"
-      }
-    ]
-  }
-}
-```
-
----
-
-### 3. Check Google Safe Browsing Directly
-Directly checks URLs against Google's real-time threat database.
-
-- **Endpoint**: `POST /api/safe-browsing/check`
-
-#### Request:
-```json
-{
-  "urls": [
-    "http://testsafebrowsing.appspot.com/s/malware.html",
-    "https://google.com"
-  ]
-}
-```
-
-#### Response:
-```json
-{
-  "success": true,
-  "totalChecked": 2,
-  "results": [
-    {
-      "url": "http://testsafebrowsing.appspot.com/s/malware.html",
-      "isSafe": false,
-      "threats": [
-        {
-          "threatType": "MALWARE",
-          "platformType": "ANY_PLATFORM",
-          "cacheDuration": "300s"
-        }
-      ]
-    },
-    {
-      "url": "https://google.com",
-      "isSafe": true,
-      "threats": []
-    }
-  ]
-}
-```
-
----
-
-### 4. Health Check
-- **Endpoint**: `GET /health`
-- **Response**: `{"status": "ok", "timestamp": "2026-10-02T16:45:00.000Z"}`
 
 ---
 
@@ -393,16 +295,8 @@ Rather than letting an opaque ML number decide everything, Friend Shield follows
 
 ---
 
-## 🔮 Future Roadmap
-
-- [ ] **Open-Source Local LLM Explanation Layer**: Generate contextual explanations in simple Bangla and English (e.g. *"এই লিংকটিতে আপনার বিকাশ পিন বা ওটিপি কখনো দিবেন না"*).
-- [ ] **Browser Extension**: Real-time page warning banner on phishing landing pages.
-- [ ] **WhatsApp & Telegram Bot**: Forward suspicious messages directly to a Friend Shield bot for instant analysis.
-- [ ] **Crowdsourced Scam Submissions**: Regional threat feed for Bangladesh e-Gov CIRT and cyber safety organizations.
-
----
-
 ## 📄 License & Terms
 
 - Developed for **Hacktoberfest 2026**.
 - Safe Browsing queries are powered by the **Google Safe Browsing API (v4)** for non-commercial safety purposes in accordance with Google's Safe Browsing Terms of Service.
+- Multilingual explanations powered by **Google Gemini API**.

@@ -3,6 +3,7 @@ import { resolveRedirects } from "../services/redirect-resolver.service.js";
 import { checkUrlsSafety } from "../services/safe-browsing.service.js";
 import { extractUrlFeatures } from "../services/feature-extractor.service.js";
 import { predictUrlRisk } from "../services/ml-predictor.service.js";
+import { generateSafetyExplanation } from "../services/llm-explainer.service.js";
 import { ValidationError } from "../utils/errors.js";
 
 const MAX_MESSAGE_LENGTH = 10_000;
@@ -63,14 +64,17 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction) {
 
 /**
  * Controller to analyze a message, extract URLs, resolve redirects,
- * extract numeric features, run ONNX ML inference, and query Safe Browsing.
+ * extract numeric features, run ONNX ML inference, query Safe Browsing,
+ * and synthesize an empathetic, actionable explanation via Gemini LLM.
  */
 export async function analyzeMessage(req, res, next) {
   try {
     const {
       message,
-      resolveRedirects: shouldResolve = true, // default to true for comprehensive analysis
-      checkThreats = true
+      resolveRedirects: shouldResolve = true,
+      checkThreats = true,
+      explain = true,
+      language = "both"
     } = req.body ?? {};
 
     if (typeof message !== "string") {
@@ -140,7 +144,7 @@ export async function analyzeMessage(req, res, next) {
       }
     }
 
-    // 3. Extract Features, Run Local ONNX ML Model, and Synthesize Final Decision
+    // 3. Extract Features, Run Local ONNX ML Model, and Synthesize Verdict
     let overallThreatDetected = false;
 
     for (const item of activeUrls) {
@@ -190,11 +194,34 @@ export async function analyzeMessage(req, res, next) {
       }
     }
 
+    // Determine overall message-level verdict
+    let overallVerdict = "NO_KNOWN_THREAT";
+    if (activeUrls.some((u) => u.riskAssessment?.verdict === "HIGH_RISK")) {
+      overallVerdict = "HIGH_RISK";
+    } else if (activeUrls.some((u) => u.riskAssessment?.verdict === "SUSPICIOUS")) {
+      overallVerdict = "SUSPICIOUS";
+    } else if (activeUrls.some((u) => u.riskAssessment?.verdict === "NEEDS_REVIEW")) {
+      overallVerdict = "NEEDS_REVIEW";
+    }
+
+    // 4. Generate AI Explanation in Bangla/English via Gemini LLM
+    let explanation = null;
+    if (explain && activeUrls.length > 0) {
+      explanation = await generateSafetyExplanation({
+        originalMessage: trimmedMessage,
+        overallVerdict,
+        urls: activeUrls,
+        language
+      });
+    }
+
     return res.status(200).json({
       success: true,
       messageLength: trimmedMessage.length,
       urlCount: urls.length,
       threatDetected: overallThreatDetected,
+      overallVerdict,
+      explanation,
       urls: activeUrls
     });
   } catch (error) {
