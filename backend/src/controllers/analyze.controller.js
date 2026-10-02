@@ -22,21 +22,50 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
     return {
       verdict: "HIGH_RISK",
       confidence: "high",
-      reason: "Confirmed threat match detected in Google Safe Browsing reputation lists."
+      decisionBasis: ["safe_browsing_match"],
+      reason: "Confirmed threat match detected in Google Safe Browsing reputation database."
     };
   }
 
-  // 2. Critical deterministic security rules
+  // 2. Deterministic security rules with contextual nuance
   const hasRawIp = signals.some((s) => s.includes("raw IP address"));
   const hasDowngrade = signals.some((s) => s.includes("downgraded from secure HTTPS"));
   const hasAtSymbol = signals.some((s) => s.includes("@"));
   const hasBrandImpersonation = signals.some((s) => s.includes("Brand impersonation detected"));
 
-  if (hasRawIp || hasDowngrade || hasAtSymbol || hasBrandImpersonation) {
+  // Check if URL targets sensitive authentication, banking, or credential paths
+  const hasSensitivePath = targetUrl && /(login|signin|admin|verify|verification|account|password|banking|wallet|otp|claim|bonus)/i.test(targetUrl);
+
+  // Critical hazard: Brand impersonation or credential-disguising '@' symbol
+  if (hasBrandImpersonation || hasAtSymbol) {
+    const basis = [];
+    if (hasBrandImpersonation) basis.push("brand_impersonation");
+    if (hasAtSymbol) basis.push("at_symbol_disguise");
     return {
       verdict: "HIGH_RISK",
       confidence: "high",
-      reason: "High-risk structural pattern detected (e.g. brand impersonation, raw IP, HTTPS downgrade, or @ symbol disguise)."
+      decisionBasis: basis,
+      reason: "High-risk deceptive structure detected (e.g. brand impersonation or credential-disguising '@' symbol)."
+    };
+  }
+
+  // Nuanced: Raw IP address hosting sensitive paths -> HIGH_RISK
+  if (hasRawIp && hasSensitivePath) {
+    return {
+      verdict: "HIGH_RISK",
+      confidence: "high",
+      decisionBasis: ["raw_ip_address", "sensitive_endpoint"],
+      reason: "High-risk pattern: Raw IP address hosting sensitive authentication or financial paths."
+    };
+  }
+
+  // Nuanced: Connection downgraded to HTTP on sensitive paths -> HIGH_RISK
+  if (hasDowngrade && hasSensitivePath) {
+    return {
+      verdict: "HIGH_RISK",
+      confidence: "high",
+      decisionBasis: ["https_downgrade", "sensitive_endpoint"],
+      reason: "High-risk pattern: Connection downgraded from HTTPS to insecure HTTP on an authentication/payment path."
     };
   }
 
@@ -57,13 +86,14 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
     return {
       verdict: "NO_KNOWN_THREAT",
       confidence: "high",
+      decisionBasis: ["verified_official_domain"],
       reason: "Verified official legitimate domain with no security anomalies detected."
     };
   }
 
   // 4. Local ML model risk probability & Abstention Policy
-  const prob = mlPrediction?.phishingProbability ?? mlPrediction?.probability ?? 0.0;
-  const uncertainty = mlPrediction?.uncertainty ?? Number((1.0 - 2.0 * Math.abs(prob - 0.5)).toFixed(4));
+  const prob = mlPrediction?.phishingProbability ?? 0.0;
+  const decisionAmbiguity = mlPrediction?.decisionAmbiguity ?? Number((1.0 - 2.0 * Math.abs(prob - 0.5)).toFixed(4));
 
   // High confidence malicious: Elevated signals or very high ML probability
   if (signals.length >= 2 || (prob >= 0.85 && signals.length >= 1)) {
@@ -71,7 +101,8 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
       verdict: "SUSPICIOUS",
       confidence: "medium",
       phishingProbability: prob,
-      uncertainty,
+      decisionAmbiguity,
+      decisionBasis: ["ml_probability_high", "structural_signals"],
       reason: `Multiple risk signals detected alongside high ML phishing probability (${(prob * 100).toFixed(1)}%).`
     };
   }
@@ -81,8 +112,33 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
       verdict: "SUSPICIOUS",
       confidence: "medium",
       phishingProbability: prob,
-      uncertainty,
+      decisionAmbiguity,
+      decisionBasis: ["ml_probability_high"],
       reason: `Statistical model flagged atypical URL structure with high phishing probability (${(prob * 100).toFixed(1)}%).`
+    };
+  }
+
+  // Raw IP alone without sensitive path -> Cautionary NEEDS_REVIEW
+  if (hasRawIp) {
+    return {
+      verdict: "NEEDS_REVIEW",
+      confidence: "medium",
+      phishingProbability: prob,
+      decisionAmbiguity,
+      decisionBasis: ["raw_ip_address"],
+      reason: "URL uses a raw IP address instead of a domain name. While not necessarily malicious, public IP URLs warrant caution."
+    };
+  }
+
+  // HTTPS downgrade alone without sensitive path -> Cautionary NEEDS_REVIEW
+  if (hasDowngrade) {
+    return {
+      verdict: "NEEDS_REVIEW",
+      confidence: "medium",
+      phishingProbability: prob,
+      decisionAmbiguity,
+      decisionBasis: ["https_downgrade"],
+      reason: "Redirect downgraded connection from secure HTTPS to unencrypted HTTP. Exercise caution when entering data."
     };
   }
 
@@ -92,8 +148,9 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
       verdict: "NEEDS_REVIEW",
       confidence: "low",
       phishingProbability: prob,
-      uncertainty,
-      reason: `Abstention zone: Model phishing probability (${(prob * 100).toFixed(1)}%) is ambiguous (uncertainty: ${uncertainty}). Manual review recommended.`
+      decisionAmbiguity,
+      decisionBasis: ["ml_ambiguity_abstention"],
+      reason: `Abstention zone: Model phishing probability (${(prob * 100).toFixed(1)}%) is ambiguous (decision ambiguity: ${decisionAmbiguity}). Manual review recommended.`
     };
   }
 
@@ -102,7 +159,8 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
       verdict: "NEEDS_REVIEW",
       confidence: "medium",
       phishingProbability: prob,
-      uncertainty,
+      decisionAmbiguity,
+      decisionBasis: ["cautionary_signals"],
       reason: `Contains cautionary signal (${signals[0]}).`
     };
   }
@@ -111,7 +169,8 @@ function computeRiskVerdict(safeBrowsing, signals, mlPrediction, targetUrl = nul
     verdict: "NO_KNOWN_THREAT",
     confidence: "medium",
     phishingProbability: prob,
-    uncertainty,
+    decisionAmbiguity,
+    decisionBasis: ["clean_reputation_and_features"],
     reason: "No threat match in Google Safe Browsing and local ML indicates low structural risk. (Absence of evidence does not guarantee 100% safety)."
   };
 }

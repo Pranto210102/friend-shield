@@ -302,12 +302,12 @@ function renderExplanationLanguage() {
 
   if (currentLanguage === "bn") {
     aiSummary.textContent = currentExplanation.summary_bn || currentExplanation.summary_en || "";
-    aiPoints.innerHTML = (currentExplanation.explanation_bn || currentExplanation.explanation_en || "").replace(/\n/g, "<br>");
+    aiPoints.innerHTML = escapeHtml(currentExplanation.explanation_bn || currentExplanation.explanation_en || "").replace(/\n/g, "<br>");
     actionHeading.textContent = "করণীয় (Action Advice):";
     aiActionText.textContent = currentExplanation.action_advice_bn || currentExplanation.action_advice_en || "";
   } else if (currentLanguage === "en") {
     aiSummary.textContent = currentExplanation.summary_en || currentExplanation.summary_bn || "";
-    aiPoints.innerHTML = (currentExplanation.explanation_en || currentExplanation.explanation_bn || "").replace(/\n/g, "<br>");
+    aiPoints.innerHTML = escapeHtml(currentExplanation.explanation_en || currentExplanation.explanation_bn || "").replace(/\n/g, "<br>");
     actionHeading.textContent = "Recommended Action:";
     aiActionText.textContent = currentExplanation.action_advice_en || currentExplanation.action_advice_bn || "";
   } else if (currentLanguage === "banglish") {
@@ -321,7 +321,7 @@ function renderExplanationLanguage() {
     if (!p || hasBengaliChars(p)) {
       p = toBanglish(currentExplanation.explanation_bn || currentExplanation.explanation_en || "");
     }
-    aiPoints.innerHTML = p.replace(/\n/g, "<br>");
+    aiPoints.innerHTML = escapeHtml(p).replace(/\n/g, "<br>");
 
     actionHeading.textContent = "Ki Korben (Banglish Action Advice):";
     let a = currentExplanation.action_advice_banglish || currentExplanation.banglish_advice || "";

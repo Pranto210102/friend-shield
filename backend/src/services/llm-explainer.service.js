@@ -37,6 +37,38 @@ function extractAndParseJson(text) {
   return null;
 }
 
+const REQUIRED_EXPLANATION_KEYS = [
+  "summary_bn",
+  "explanation_bn",
+  "action_advice_bn",
+  "summary_en",
+  "explanation_en",
+  "action_advice_en",
+  "summary_banglish",
+  "explanation_banglish",
+  "action_advice_banglish"
+];
+
+/**
+ * Validates that an LLM response contains all required fields,
+ * conforms to length boundaries, and contains no structural corruption.
+ */
+function validateExplanationPayload(obj) {
+  if (!obj || typeof obj !== "object") return null;
+
+  for (const key of REQUIRED_EXPLANATION_KEYS) {
+    if (typeof obj[key] !== "string" || obj[key].trim().length === 0) {
+      return null; // Missing or non-string field -> trigger deterministic fallback
+    }
+    // Hard ceiling to prevent token runaway
+    if (obj[key].length > 1200) {
+      obj[key] = obj[key].substring(0, 1200) + "...";
+    }
+  }
+
+  return obj;
+}
+
 /**
  * Fallback template generator when LLM is unavailable or offline.
  */
@@ -197,9 +229,10 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
           const data = await groqRes.json();
           const content = data.choices?.[0]?.message?.content;
           const parsed = extractAndParseJson(content);
-          if (parsed) {
-            parsed.source = `Open-Source AI (${model} on Groq)`;
-            return parsed;
+          const validated = validateExplanationPayload(parsed);
+          if (validated) {
+            validated.source = `Open-Source AI (${model} hosted on Groq LPU)`;
+            return validated;
           }
         } else {
           const errData = await groqRes.json().catch(() => ({}));
@@ -229,9 +262,10 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
       const data = await ollamaRes.json();
       const content = data.message?.content;
       const parsed = extractAndParseJson(content);
-      if (parsed) {
-        parsed.source = `Open-Source Gemma 2 (Local Ollama: ${GEMMA_LOCAL_MODEL})`;
-        return parsed;
+      const validated = validateExplanationPayload(parsed);
+      if (validated) {
+        validated.source = `Google Gemma 2 (Local Ollama: ${GEMMA_LOCAL_MODEL})`;
+        return validated;
       }
     }
   } catch {}

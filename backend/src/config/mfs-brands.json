@@ -1,0 +1,44 @@
+{
+  "bKash": {
+    "officialDomains": ["bkash.com"],
+    "brandKeywords": ["bkash", "বিকাশ"],
+    "source": "https://www.bkash.com",
+    "lastVerified": "2026-10-03"
+  },
+  "Nagad": {
+    "officialDomains": ["nagad.com.bd"],
+    "brandKeywords": ["nagad", "নগদ"],
+    "source": "https://nagad.com.bd",
+    "lastVerified": "2026-10-03"
+  },
+  "Upay": {
+    "officialDomains": ["upaybd.com"],
+    "brandKeywords": ["upay", "upaybd", "উপায়"],
+    "source": "https://www.upaybd.com",
+    "lastVerified": "2026-10-03"
+  },
+  "Rocket": {
+    "officialDomains": ["dutchbanglabank.com", "rocket.com.bd"],
+    "brandKeywords": ["rocket", "রকেট"],
+    "source": "https://www.dutchbanglabank.com/rocket/rocket.html",
+    "lastVerified": "2026-10-03"
+  },
+  "Daraz": {
+    "officialDomains": ["daraz.com.bd"],
+    "brandKeywords": ["daraz", "দারাজ"],
+    "source": "https://www.daraz.com.bd",
+    "lastVerified": "2026-10-03"
+  },
+  "PayPal": {
+    "officialDomains": ["paypal.com"],
+    "brandKeywords": ["paypal"],
+    "source": "https://www.paypal.com",
+    "lastVerified": "2026-10-03"
+  },
+  "Apple": {
+    "officialDomains": ["apple.com", "icloud.com"],
+    "brandKeywords": ["appleid", "icloud"],
+    "source": "https://www.apple.com",
+    "lastVerified": "2026-10-03"
+  }
+}

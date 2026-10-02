@@ -9,6 +9,7 @@
 
 const VECTORS = {
   urgency: {
+    code: "U",
     name: "Urgency & Panic",
     name_bn: "কৃত্রিম জরুরি অবস্থা ও ভীতি প্রদর্শন",
     weight: 0.30,
@@ -44,9 +45,10 @@ const VECTORS = {
     ]
   },
   financialBait: {
+    code: "FB",
     name: "Financial Bait & Greed",
     name_bn: "আর্থিক প্রলোভন ও বোনাসের ফাঁদ",
-    weight: 0.35,
+    weight: 0.25,
     patterns: [
       /bonus(?:es)?/i,
       /won\b/i,
@@ -77,6 +79,7 @@ const VECTORS = {
     ]
   },
   authorityImpersonation: {
+    code: "AU",
     name: "Authority Impersonation",
     name_bn: "কর্তৃপক্ষের নাম ভাঙিয়ে বিভ্রান্তি",
     weight: 0.20,
@@ -102,9 +105,10 @@ const VECTORS = {
     ]
   },
   credentialCoercion: {
+    code: "CC",
     name: "Credential Coercion",
     name_bn: "গোপন পিন/ওটিপি হাতিয়ে নেওয়ার চেষ্টা",
-    weight: 0.40,
+    weight: 0.25,
     patterns: [
       /enter\s*(?:your)?\s*pin/i,
       /provide\s*(?:your)?\s*otp/i,
@@ -167,6 +171,7 @@ export function analyzeSocialEngineering(text) {
       weightedSum += vectorScore * vector.weight;
 
       detectedVectors.push({
+        code: vector.code,
         vectorKey: key,
         name: vector.name,
         name_bn: vector.name_bn,
@@ -180,11 +185,11 @@ export function analyzeSocialEngineering(text) {
   const finalScore = Math.min(100, Math.round(weightedSum));
 
   let riskLevel = "MINIMAL";
-  if (finalScore >= 75 || detectedVectors.length >= 3) {
+  if (finalScore >= 70 || detectedVectors.length >= 3) {
     riskLevel = "CRITICAL";
-  } else if (finalScore >= 50 || detectedVectors.length >= 2) {
+  } else if (finalScore >= 40 || detectedVectors.length >= 2) {
     riskLevel = "HIGH";
-  } else if (finalScore >= 25 || detectedVectors.length >= 1) {
+  } else if (finalScore >= 20 || detectedVectors.length >= 1) {
     riskLevel = "MODERATE";
   }
 
@@ -196,7 +201,8 @@ export function analyzeSocialEngineering(text) {
     hasUrgency: detectedVectors.some((v) => v.vectorKey === "urgency"),
     hasFinancialBait: detectedVectors.some((v) => v.vectorKey === "financialBait"),
     hasAuthorityImpersonation: detectedVectors.some((v) => v.vectorKey === "authorityImpersonation"),
-    hasCredentialCoercion: detectedVectors.some((v) => v.vectorKey === "credentialCoercion")
+    hasCredentialCoercion: detectedVectors.some((v) => v.vectorKey === "credentialCoercion"),
+    limitation: "SEMI is a rule-based educational heuristic indicator, not a clinically or psychometrically validated psychological measurement."
   };
 }
 

@@ -34,15 +34,20 @@ const SUSPICIOUS_KEYWORDS = [
   "claim"
 ];
 
-// Target brands frequently impersonated in phishing (including local Bangladeshi MFS)
-const KNOWN_BRANDS = [
-  { name: "bKash", pattern: /bkash/i, legitDomain: "bkash.com" },
-  { name: "Nagad", pattern: /nagad/i, legitDomain: "nagad.com.bd" },
-  { name: "Upay", pattern: /upaybd/i, legitDomain: "upaybd.com" },
-  { name: "Daraz", pattern: /daraz/i, legitDomain: "daraz.com.bd" },
-  { name: "PayPal", pattern: /paypal/i, legitDomain: "paypal.com" },
-  { name: "Apple/iCloud", pattern: /appleid|icloud/i, legitDomain: "apple.com" }
-];
+import fs from "node:fs";
+
+// Load verified brand registry with audit dates and official sources
+const brandConfigPath = new URL("../config/mfs-brands.json", import.meta.url);
+export const BRAND_REGISTRY = JSON.parse(fs.readFileSync(brandConfigPath, "utf-8"));
+
+const KNOWN_BRANDS = Object.entries(BRAND_REGISTRY).map(([name, cfg]) => ({
+  name,
+  pattern: new RegExp(cfg.brandKeywords.join("|"), "i"),
+  officialDomains: cfg.officialDomains,
+  primaryDomain: cfg.officialDomains[0],
+  source: cfg.source,
+  lastVerified: cfg.lastVerified
+}));
 
 export const TRUSTED_DOMAINS = new Set([
   // Bangladeshi MFS, Central & Commercial Banks
@@ -317,13 +322,12 @@ export function extractUrlFeatures(urlString, redirectInfo = {}) {
     signals.push(`The URL path or query contains sensitive keywords: [${matchedKeywords.join(", ")}].`);
   }
 
-  // Check for brand impersonation (e.g. fake bKash, Nagad, PayPal)
   for (const b of KNOWN_BRANDS) {
     if (b.pattern.test(fullUrl)) {
-      const isLegit = hostname === b.legitDomain || hostname.endsWith(`.${b.legitDomain}`);
+      const isLegit = b.officialDomains.some((d) => hostname === d || hostname.endsWith(`.${d}`));
       if (!isLegit) {
         signals.push(
-          `Brand impersonation detected: The URL mimics '${b.name}', but does not belong to the official '${b.legitDomain}' domain.`
+          `Brand impersonation detected: The URL mimics '${b.name}', but does not belong to the verified official domain '${b.primaryDomain}'.`
         );
       }
     }

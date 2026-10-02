@@ -90,14 +90,13 @@ export async function predictUrlRisk(features) {
   const labelVal = outputs.label?.data?.[0];
   const isMalicious = labelVal === 1n || labelVal === 1 || maliciousProbability >= 0.5;
 
-  // Measure uncertainty metric: maximum (1.0) at decision boundary 0.5, approaching 0 at extremes
-  const uncertainty = Number((1.0 - 2.0 * Math.abs(maliciousProbability - 0.5)).toFixed(4));
+  // Measure decision ambiguity metric: maximum (1.0) at decision boundary 0.5, approaching 0 at extremes
+  const decisionAmbiguity = Number((1.0 - 2.0 * Math.abs(maliciousProbability - 0.5)).toFixed(4));
 
   return {
     phishingProbability: Number(maliciousProbability.toFixed(4)),
-    probability: Number(maliciousProbability.toFixed(4)), // Backwards-compatible alias
-    uncertainty,
-    label: isMalicious ? "malicious" : "safe",
+    decisionAmbiguity,
+    modelLabel: isMalicious ? "malicious" : "benign",
     inferenceTimeMs
   };
 }
