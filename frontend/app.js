@@ -3,9 +3,10 @@
 // ==========================================
 
 const API_BASE_URL =
-  window.location.origin.includes("localhost:8000") || window.location.origin.includes("127.0.0.1:8000")
-    ? "" // Same origin
-    : "http://localhost:8000";
+  window.location.protocol === "file:" ||
+  (window.location.hostname === "localhost" && window.location.port && window.location.port !== "8000")
+    ? "http://localhost:8000"
+    : ""; // Same-origin relative path for port 8000 and any production cloud deployment (Render, etc.)
 
 const PRESET_MESSAGES = {
   bkash: "বিকাশ থেকে আপনাকে ১০,০০০ টাকা ঈদ বোনাস দেওয়া হয়েছে! এখনই ক্লেইম করুন: http://bkash-eid-bonus.xyz/claim",
