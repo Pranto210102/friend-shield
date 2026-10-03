@@ -38,7 +38,7 @@ const btnPreviewRemove = document.getElementById("btn-preview-remove");
 const mediaScanStatus = document.getElementById("media-scan-status");
 const mediaScanStatusText = document.getElementById("media-scan-status-text");
 
-const apiStatus = document.getElementById("api-status");
+
 const resultsCard = document.getElementById("results-card");
 const toastContainer = document.getElementById("toast-container");
 
@@ -106,24 +106,7 @@ window.addEventListener("appinstalled", () => {
   showToast("Friend Shield অ্যাপটি সফলভাবে ইনস্টল করা হয়েছে! 🎉", "success");
 });
 
-// 3. API Health Check
-async function checkApiHealth() {
-  const statusDot = apiStatus.querySelector(".status-dot");
-  const statusText = apiStatus.querySelector(".status-text");
 
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/health`, { signal: AbortSignal.timeout(4000) });
-    if (res.ok) {
-      statusDot.className = "status-dot online";
-      statusText.textContent = "সার্ভার সক্রিয় (Online)";
-    } else {
-      throw new Error();
-    }
-  } catch {
-    statusDot.className = "status-dot offline";
-    statusText.textContent = "সার্ভার সংযোগ বিচ্ছিন্ন (Offline)";
-  }
-}
 
 // 4. Preset Click Handlers
 document.querySelectorAll(".pill-btn").forEach((btn) => {
@@ -892,4 +875,3 @@ function escapeHtml(str) {
 }
 
 // Initialize on page load
-checkApiHealth();
