@@ -2,7 +2,7 @@
 // Friend Shield - Service Worker (PWA Offline Shell & Asset Cache)
 // ==========================================================================
 
-const CACHE_NAME = "friend-shield-v1";
+const CACHE_NAME = "friend-shield-v2";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
