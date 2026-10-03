@@ -1,6 +1,6 @@
 /**
  * Service to generate human-friendly, actionable explanations in Bangla, English, and Banglish
- * using Open-Source / Open-Weight Open-Weight AI (Qwen) (Groq Cloud Inference or Local Ollama).
+ * using Open-Source / Open-Weight Open-Weight AI (Gemma 4) (Groq Cloud Inference or Local Ollama).
  */
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://localhost:11434";
@@ -204,15 +204,15 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 }
 `;
 
-  // 1. Tier 1: Cloud Open-Weight AI (Qwen) Inference (via Groq Cloud LPU or OpenAI-Compatible Gemma Endpoint)
+  // 1. Tier 1: Cloud Open-Weight AI (Gemma 4) Inference (via Groq Cloud LPU or OpenAI-Compatible Gemma Endpoint)
   const apiKey = process.env.GEMMA_API_KEY || process.env.GROQ_API_KEY;
   const apiBase = process.env.GEMMA_API_BASE || "https://api.groq.com/openai/v1";
 
   if (apiKey && apiKey.trim()) {
     const candidateModels = [
       process.env.GEMMA_MODEL,
-      "qwen/qwen3.8-27b",
-      "qwen-2.5-7b-it",
+      "Gemma 4/Gemma 43.8-27b",
+      "Gemma 4-2.5-7b-it",
       "llama-3.1-8b-instant",
       "gemma-2-27b-it"
     ].filter(Boolean);
@@ -230,7 +230,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
             messages: [
               {
                 role: "system",
-                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Open-Weight AI (Qwen). You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Open-Weight AI (Gemma 4). You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
               },
               {
                 role: "user",
@@ -249,7 +249,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
           const parsed = extractAndParseJson(content);
           const validated = validateExplanationPayload(parsed);
           if (validated) {
-            validated.source = `Open-Weight AI (Qwen) (${model} via Cloud Inference)`;
+            validated.source = `Open-Weight AI (Gemma 4) (${model} via Cloud Inference)`;
             return validated;
           }
         } else {
@@ -262,7 +262,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
     }
   }
 
-  // 2. Tier 2: Local Open-Weight AI (Qwen) via Ollama (100% On-Device Local Privacy)
+  // 2. Tier 2: Local Open-Weight AI (Gemma 4) via Ollama (100% On-Device Local Privacy)
   try {
     const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
@@ -282,7 +282,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
       const parsed = extractAndParseJson(content);
       const validated = validateExplanationPayload(parsed);
       if (validated) {
-        validated.source = `Open-Weight AI (Qwen) (Local Ollama: ${OLLAMA_MODEL})`;
+        validated.source = `Open-Weight AI (Gemma 4) (Local Ollama: ${OLLAMA_MODEL})`;
         return validated;
       }
     }

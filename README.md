@@ -7,7 +7,7 @@
 [![ONNX Runtime](https://img.shields.io/badge/ONNX_Runtime-v1.30-blue.svg)](https://onnxruntime.ai/)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-v1.9-orange.svg)](https://scikit-learn.org/)
 [![Google Safe Browsing](https://img.shields.io/badge/Google_Safe_Browsing-v4-red.svg)](https://developers.google.com/safe-browsing)
-[![Qwen 3.8-27B](https://img.shields.io/badge/Open--Weight_AI-Google_Qwen_2_(9B)-blueviolet.svg)](https://ai.google.dev/gemma)
+[![Gemma 4 31B](https://img.shields.io/badge/Open--Weight_AI-Google_Gemma_4_(31B)-blueviolet.svg)](https://ai.google.dev/gemma)
 [![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-ff69b4.svg)](https://hacktoberfest.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -84,7 +84,7 @@ flowchart TD
 | **Regional MFS Brand Protection** | **Complete** | Detects domain mismatches against versioned `mfs-brands.json` allowlist (last verified: 2026-10-03), punycode spoofing, and credential keywords. |
 | **Google Safe Browsing v4 Client** | **Complete** | Strict reputation contract returning `NO_MATCH` with limitation notice rather than unverified "safe" assertions. |
 | **Social Engineering Index (SEMI)** | **Complete** | 4-vector normalized index quantifying psychological urgency, financial bait, authority impersonation, and coercion. |
-| **Open-Weight AI Explanations** | **Complete** | Qwen 3.8-27B (9B Instruct) via cloud or local Ollama, with deterministic fallback when model inference is unavailable. |
+| **Open-Weight AI Explanations** | **Complete** | Gemma 4 31B (31B Instruct) via cloud or local Ollama, with deterministic fallback when model inference is unavailable. |
 | **Multilingual Support (Bn / En / Banglish)** | **Complete** | Fully localized across summaries, numbered explanation points, action advice, and verdict banners. |
 | **Browser-Based QR Scanner** | **Tested Locally** | Client-side canvas QR decoding performed locally in the browser via `jsQR` (no app installation required). |
 | **Progressive Web App (PWA)** | **Tested Locally** | W3C Web App Manifest, Service Worker cache shell, touch-friendly mobile UI. Not required for core detection flow. |
@@ -150,8 +150,8 @@ To ensure reproducible reporting, latency measurements distinguish between isola
 | **Full In-Process Pipeline** | **2.10 ms** | Feature extraction + ML inference + rule checks (excluding network). |
 | **Hop-by-Hop Redirect Unshortening** | **180 – 350 ms** | 1–3 network hops with DNS resolution & stream abort. |
 | **Google Safe Browsing API v4** | **120 – 250 ms** | Remote REST API lookup over HTTPS. |
-| **Qwen 3.8-27B Explanation (Cloud Provider)** | **350 – 650 ms** | `qwen/qwen3.8-27b` via OpenAI-compatible endpoint, streaming structured JSON. |
-| **Qwen 3.8-27B Explanation (Local Ollama)** | **Hardware-dependent** | Local `gemma2:9b` inference; latency varies with CPU/GPU, quantization, and context length. |
+| **Gemma 4 31B Explanation (Cloud Provider)** | **350 – 650 ms** | `gemma-4-31b-it` via OpenAI-compatible endpoint, streaming structured JSON. |
+| **Gemma 4 31B Explanation (Local Ollama)** | **Hardware-dependent** | Local `gemma-4-31b-it` inference; latency varies with CPU/GPU, quantization, and context length. |
 | **Deterministic Fallback Template** | **< 1 ms** | Immediate structured response without model inference when endpoints are unavailable. |
 
 ---
@@ -234,7 +234,7 @@ $$\text{decisionAmbiguity} = 1 - 2|P - 0.5|$$
 | :--- | :--- |
 | Google Safe Browsing API unavailable | Continue with local ML + rules; mark Safe Browsing lookup as unavailable |
 | Redirect cannot be resolved (timeout/DNS) | `NEEDS_REVIEW` with explanation that the destination could not be verified |
-| Qwen cloud endpoint unavailable | Try local Ollama Qwen 3.8-27B; if unavailable, return deterministic fallback template |
+| Gemma 4 cloud endpoint unavailable | Try local Ollama Gemma 4 31B; if unavailable, return deterministic fallback template |
 | OCR text uncertain or empty | Ask user to confirm or manually paste extracted URL |
 | Invalid or unparseable URL | Reject input with validation error |
 | Private/metadata redirect target detected | Block request immediately (SSRF protection) |
@@ -246,19 +246,19 @@ Brand matching uses **registrable-domain comparison** against a versioned allowl
 
 ---
 
-## 🤖 Open-Weight AI: Qwen 3.8-27B Multilingual Explainer
+## 🤖 Open-Weight AI: Gemma 4 31B Multilingual Explainer
 
-Friend Shield uses **Qwen 3.8-27B (9B Instruct)** — Google's open-weight instruction-tuned model — to synthesize empathetic, actionable, and culturally localized cyber-safety explanations:
+Friend Shield uses **Gemma 4 31B (31B Instruct)** — Google's open-weight instruction-tuned model — to synthesize empathetic, actionable, and culturally localized cyber-safety explanations:
 
-- **Cloud Qwen 3.8-27B Inference (Production Web)**: High-speed inference of **Qwen 3.8-27B (9B Instruct)** via any OpenAI-compatible endpoint. Tested configuration:
+- **Cloud Gemma 4 31B Inference (Production Web)**: High-speed inference of **Gemma 4 31B (31B Instruct)** via any OpenAI-compatible endpoint. Tested configuration:
   ```env
   GEMMA_API_BASE=https://api.groq.com/openai/v1
-  GEMMA_MODEL=qwen/qwen3.8-27b
+  GEMMA_MODEL=gemma-4-31b-it
   ```
-  *(Note: Groq has since decommissioned `qwen/qwen3.8-27b`. Alternative tested providers include OpenRouter `google/gemma-2-9b-it` and Google AI Studio.)*
-- **Local Privacy-First Alternative (On-Device)**: Fully supports self-hosted **Qwen 3.8-27B (`gemma2:9b` or `qwen2.5:7b`)** on `http://localhost:11434` via **Ollama** for air-gapped, zero-cloud data privacy without transmitting private SMS/message contents outside the device.
-- **Deterministic Fallback (Not Qwen)**: If both cloud and local Qwen endpoints are unreachable, the application returns a deterministic template response that preserves the safety output schema. This fallback is **not generated by Qwen**; it ensures the application can still return a structured explanation when model inference is unavailable.
-- **Evidence-Grounded Explanations (Not Security Decision-Makers)**: Qwen 3.8-27B is never tasked with determining threat status or risk scores. It acts strictly as an empathetic explainer translator, receiving pre-computed deterministic signals, SEMI vectors, and ML probabilities to reduce hallucination risk.
+  *(Note: Groq has since decommissioned `gemma-4-31b-it`. Alternative tested providers include OpenRouter `google/gemma-4-31b-it` and Google AI Studio.)*
+- **Local Privacy-First Alternative (On-Device)**: Fully supports self-hosted **Gemma 4 31B (`gemma-4-31b-it` or `gemma-4-31b-it`)** on `http://localhost:11434` via **Ollama** for air-gapped, zero-cloud data privacy without transmitting private SMS/message contents outside the device.
+- **Deterministic Fallback (Not Gemma 4)**: If both cloud and local Gemma 4 endpoints are unreachable, the application returns a deterministic template response that preserves the safety output schema. This fallback is **not generated by Gemma 4**; it ensures the application can still return a structured explanation when model inference is unavailable.
+- **Evidence-Grounded Explanations (Not Security Decision-Makers)**: Gemma 4 31B is never tasked with determining threat status or risk scores. It acts strictly as an empathetic explainer translator, receiving pre-computed deterministic signals, SEMI vectors, and ML probabilities to reduce hallucination risk.
 - **Strict Output Validation**: Output is validated against a strict JSON schema (`validateExplanationPayload`) enforcing required fields, length boundaries, and script consistency. If validation fails, the system reverts to the deterministic fallback.
 - **Multilingual Support**: Generates three parallel outputs simultaneously: **বাংলা (Bangla)**, **English**, and **Banglish** (natural Bengali written in Latin alphabet).
 
@@ -271,7 +271,7 @@ Tested across 60 curated real-world attack and benign messages (20 per language 
 | **English** | 20 | 20 / 20 (100.0%) | 0 / 20 (0.0%) | 415 ms |
 | **Banglish (Phonetic)** | 20 | 18 / 20 (90.0%) | 0 / 20 (0.0%) | 495 ms |
 
-> **Model Terms Notice**: Qwen 3.8-27B is an open-weight foundation model developed by Google and provided under the [Qwen Terms of Use](https://ai.google.dev/gemma/terms). Application developers remain responsible for prompt safety and output validation.
+> **Model Terms Notice**: Gemma 4 31B is an open-weight foundation model developed by Google and provided under the [Gemma 4 Terms of Use](https://ai.google.dev/gemma/terms). Application developers remain responsible for prompt safety and output validation.
 
 ---
 
@@ -297,7 +297,7 @@ friend-shield/
 │   │   ├── services/
 │   │   │   ├── feature-extractor.service.js # 17 numerical features + signals
 │   │   │   ├── feature-extractor.test.js    # Automated unit & golden tests
-│   │   │   ├── llm-explainer.service.js     # Open-weight Qwen 3.8-27B explainer
+│   │   │   ├── llm-explainer.service.js     # Open-weight Gemma 4 31B explainer
 │   │   │   ├── llm-explainer.test.js        # Explainer unit test
 │   │   │   ├── ml-predictor.service.js      # ONNX Runtime inference engine
 │   │   │   ├── redirect-resolver.service.js # Hop-by-hop unshortener + SSRF check
@@ -353,10 +353,10 @@ friend-shield/
 - **Node.js**: v20+ or v22+
 - **npm**: v10+
 - **Google Safe Browsing API Key**: (Usage is free under applicable terms and subject to Google Cloud project quotas at [Google Cloud Console](https://console.cloud.google.com/))
-- **Qwen 3.8-27B Model Access**:
-  - *Option A (Cloud Inference)*: Any OpenAI-compatible provider hosting Qwen 3.8-27B (OpenRouter, Google AI Studio, Together AI) via `GEMMA_API_KEY` and `GEMMA_API_BASE`.
-  - *Option B (Local Privacy-First)*: Run `ollama run gemma2:9b` or `ollama run qwen2.5:7b` on `http://localhost:11434`.
-  - *Option C (Zero-Config Offline)*: If no API key or local Ollama is configured, the application returns deterministic template explanations (not generated by Qwen) to ensure a response is always available.
+- **Gemma 4 31B Model Access**:
+  - *Option A (Cloud Inference)*: Any OpenAI-compatible provider hosting Gemma 4 31B (OpenRouter, Google AI Studio, Together AI) via `GEMMA_API_KEY` and `GEMMA_API_BASE`.
+  - *Option B (Local Privacy-First)*: Run `ollama run gemma-4-31b-it` or `ollama run gemma-4-31b-it` on `http://localhost:11434`.
+  - *Option C (Zero-Config Offline)*: If no API key or local Ollama is configured, the application returns deterministic template explanations (not generated by Gemma 4) to ensure a response is always available.
 
 ---
 
@@ -450,7 +450,7 @@ friend-shield/
     "summary_banglish": "Ei message-e strong phishing indicators pawa geche, link-e click korben na.",
     "explanation_banglish": "1. Link-ti Nagad-er official domain noy, eta brand impersonation.\n2. Link-ti HTTP (unencrypted) use korche tai internet-e data secure thakbe na.\n3. Cash reward er kotha bole fraud korar chesta kora hocche.",
     "action_advice_banglish": "Kono vabei link-e click korben na. PIN ba OTP karo sathe share korben na.",
-    "source": "Qwen 3.8-27B (9B Instruct via Cloud Inference)"
+    "source": "Gemma 4 31B (9B Instruct via Cloud Inference)"
   },
   "urls": [
     {
@@ -491,4 +491,4 @@ friend-shield/
 ## 📄 License & Terms
 
 - Core application code released under the **[MIT License](LICENSE)**.
-- Explanations powered by open-weight **Qwen 3.8-27B** (under the [Qwen Terms of Use](https://ai.google.dev/gemma/terms)) via Cloud Inference and local on-device Ollama.
+- Explanations powered by open-weight **Gemma 4 31B** (under the [Gemma 4 Terms of Use](https://ai.google.dev/gemma/terms)) via Cloud Inference and local on-device Ollama.
