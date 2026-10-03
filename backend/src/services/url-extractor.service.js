@@ -1,4 +1,4 @@
-const URL_CANDIDATE_PATTERN = /(?:https?:\/\/|www\.)[^\s<>"'`]+/gi;
+const URL_CANDIDATE_PATTERN = /(?:https?:\/\/|www\.)[^\s<>"'`]+|\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b[^\s<>"'`]*/gi;
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 
 /**
@@ -56,7 +56,10 @@ export function parseUrlCandidate(candidate) {
     return null;
   }
 
-  const value = cleaned.startsWith("www.") ? `https://${cleaned}` : cleaned;
+  let value = cleaned;
+  if (!/^https?:\/\//i.test(value)) {
+    value = `https://${value}`;
+  }
 
   try {
     const url = new URL(value);
