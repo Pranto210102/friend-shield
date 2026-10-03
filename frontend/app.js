@@ -112,7 +112,7 @@ async function checkApiHealth() {
   const statusText = apiStatus.querySelector(".status-text");
 
   try {
-    const res = await fetch(`${API_BASE_URL}/health`, { signal: AbortSignal.timeout(4000) });
+    const res = await fetch(`${API_BASE_URL}/api/health`, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       statusDot.className = "status-dot online";
       statusText.textContent = "সার্ভার সক্রিয় (Online)";
