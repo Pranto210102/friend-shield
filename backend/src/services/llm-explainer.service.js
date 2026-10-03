@@ -212,10 +212,11 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
     const candidateModels = [
       process.env.AI_MODEL,
       process.env.GEMMA_MODEL,
-      "Gemma 4/Gemma 43.8-27b",
-      "Gemma 4-2.5-7b-it",
+      "gemma2-9b-it",
+      "llama3-8b-8192",
       "llama-3.1-8b-instant",
-      "gemma-2-27b-it"
+      "google/gemma-2-9b-it",
+      "gemma-7b-it"
     ].filter(Boolean);
 
     for (const model of candidateModels) {
