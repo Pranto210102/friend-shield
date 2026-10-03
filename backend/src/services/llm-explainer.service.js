@@ -212,6 +212,8 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
     const candidateModels = [
       process.env.AI_MODEL,
       process.env.GEMMA_MODEL,
+      "gemma-4-26b-a4b-it",
+      "models/gemma-4-26b-a4b-it",
       "qwen/qwen3.8-27b",
       "gemini-1.5-flash",
       "gemma2-9b-it",
@@ -243,7 +245,7 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
             response_format: { type: "json_object" },
             temperature: 0.1
           }),
-          signal: AbortSignal.timeout(10000)
+          signal: AbortSignal.timeout(60000)
         });
 
         if (groqRes.ok) {
