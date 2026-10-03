@@ -212,8 +212,9 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
     const candidateModels = [
       process.env.AI_MODEL,
       process.env.GEMMA_MODEL,
+      "qwen/qwen3.8-27b",
+      "gemini-1.5-flash",
       "gemma2-9b-it",
-      "llama3-8b-8192",
       "llama-3.1-8b-instant",
       "google/gemma-2-9b-it",
       "gemma-7b-it"
