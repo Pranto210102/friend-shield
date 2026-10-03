@@ -102,7 +102,7 @@ const outboundLimiter = rateLimit({
 });
 
 // Health check endpoint
-app.get("/health", (_req, res) => {
+app.get("/api/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString()
