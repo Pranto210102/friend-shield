@@ -205,11 +205,12 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 `;
 
   // 1. Tier 1: Cloud Open-Weight AI (Gemma 4) Inference (via Groq Cloud LPU or OpenAI-Compatible Gemma Endpoint)
-  const apiKey = process.env.GEMMA_API_KEY || process.env.GROQ_API_KEY;
-  const apiBase = process.env.GEMMA_API_BASE || "https://api.groq.com/openai/v1";
+  const apiKey = process.env.AI_API_KEY || process.env.GEMMA_API_KEY || process.env.GROQ_API_KEY;
+  const apiBase = process.env.AI_API_BASE || process.env.GEMMA_API_BASE || "https://api.groq.com/openai/v1";
 
   if (apiKey && apiKey.trim()) {
     const candidateModels = [
+      process.env.AI_MODEL,
       process.env.GEMMA_MODEL,
       "Gemma 4/Gemma 43.8-27b",
       "Gemma 4-2.5-7b-it",
