@@ -204,79 +204,84 @@ Output format (strict JSON):
 }
 `;
 
-  // 1. Tier 1: Cloud Open-Weight AI (Gemma 4) Inference (via Groq Cloud LPU or OpenAI-Compatible Gemma Endpoint)
+  // AI Provider & Routing Strategy
+  const provider = (process.env.AI_PROVIDER || "auto").toLowerCase();
+  const preferLocal = provider === "ollama" || provider === "local" || process.env.USE_LOCAL_AI === "true";
   const apiKey = process.env.AI_API_KEY || process.env.GEMMA_API_KEY || process.env.GROQ_API_KEY;
   const apiBase = process.env.AI_API_BASE || process.env.GEMMA_API_BASE || "https://api.groq.com/openai/v1";
 
-  if (apiKey && apiKey.trim()) {
-    const candidateModels = Array.from(
-      new Set(
-        [
-          process.env.AI_MODEL,
-          process.env.GEMMA_MODEL,
-          "gemma-4-26b-a4b-it"
-        ].filter(Boolean)
-      )
-    );
+  const candidateCloudModels = Array.from(
+    new Set(
+      [
+        process.env.AI_MODEL,
+        process.env.GEMMA_MODEL,
+        "gemma-4-26b-a4b-it"
+      ].filter(Boolean)
+    )
+  );
 
-    for (const model of candidateModels) {
-      try {
-        const groqRes = await fetch(`${apiBase}/chat/completions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey.trim()}`
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              {
-                role: "system",
-                content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Open-Weight AI (Gemma 4). You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
-              },
-              {
-                role: "user",
-                content: prompt
-              }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.1,
-            max_tokens: 1500
-          }),
-          signal: AbortSignal.timeout(45000)
-        });
+  const localModel = process.env.AI_LOCAL_MODEL || process.env.GEMMA_MODEL || OLLAMA_MODEL;
 
-        if (groqRes.ok) {
-          const data = await groqRes.json();
-          const content = data.choices?.[0]?.message?.content;
-          const parsed = extractAndParseJson(content);
-          const validated = validateExplanationPayload(parsed);
-          if (validated) {
-            validated.source = `Open-Weight AI (Gemma 4) (${model} via Cloud Inference)`;
-            return validated;
-          }
-        } else {
-          const errData = await groqRes.json().catch(() => ({}));
-          console.warn(`[Cloud AI ${model}] Warning:`, errData?.error?.message || groqRes.statusText);
-        }
-      } catch (err) {
-        console.warn(`[Cloud AI ${model}] Request error:`, err.message);
-      }
+  // 1. If configured for local Ollama preference (or air-gapped local mode)
+  if (preferLocal) {
+    const localResult = await queryLocalOllama(prompt, OLLAMA_HOST, localModel);
+    if (localResult) return localResult;
+
+    // Fallback to cloud if configured and local failed
+    if (apiKey && apiKey.trim()) {
+      const cloudResult = await queryCloudEndpoint(prompt, apiBase, apiKey, candidateCloudModels);
+      if (cloudResult) return cloudResult;
     }
+  } else {
+    // 2. Default / Cloud-First Mode (Optimized for Mobile Web Users without local GPUs)
+    if (apiKey && apiKey.trim()) {
+      const cloudResult = await queryCloudEndpoint(prompt, apiBase, apiKey, candidateCloudModels);
+      if (cloudResult) return cloudResult;
+    }
+
+    // Try Local Ollama if daemon is active or no cloud API key was provided
+    const localResult = await queryLocalOllama(prompt, OLLAMA_HOST, localModel);
+    if (localResult) return localResult;
   }
 
-  // 2. Tier 2: Local Open-Weight AI (Gemma 4) via Ollama (100% On-Device Local Privacy)
+  // 3. Tier 3: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
+  const fallback = generateFallbackExplanation(overallVerdict, urls);
+  fallback.source = "Deterministic fallback template (AI offline)";
+  fallback.deployment = "deterministic_fallback";
+  return fallback;
+}
+
+/**
+ * Helper: Query Local Ollama instance (100% Offline On-Device Execution)
+ */
+async function queryLocalOllama(prompt, host = OLLAMA_HOST, model = OLLAMA_MODEL) {
   try {
-    const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
+    // Fast ping to verify Ollama daemon is active before issuing heavy inference request
+    const pingRes = await fetch(`${host}/api/tags`, {
+      method: "GET",
+      signal: AbortSignal.timeout(1500)
+    });
+    if (!pingRes.ok) return null;
+
+    const ollamaRes = await fetch(`${host}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        messages: [{ role: "user", content: prompt }],
+        model,
+        messages: [
+          {
+            role: "system",
+            content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Open-Weight AI (Gemma). You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+          },
+          { role: "user", content: prompt }
+        ],
         stream: false,
-        format: "json"
+        format: "json",
+        options: {
+          temperature: 0.1
+        }
       }),
-      signal: AbortSignal.timeout(4000) // Fast check for local daemon
+      signal: AbortSignal.timeout(60000)
     });
 
     if (ollamaRes.ok) {
@@ -285,16 +290,67 @@ Output format (strict JSON):
       const parsed = extractAndParseJson(content);
       const validated = validateExplanationPayload(parsed);
       if (validated) {
-        validated.source = `Open-Weight AI (Gemma 4) (Local Ollama: ${OLLAMA_MODEL})`;
+        validated.source = `Google Gemma (Local Ollama: ${model})`;
+        validated.deployment = "local_ollama";
         return validated;
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn(`[Local Ollama ${model}] Notice:`, err.message);
+  }
+  return null;
+}
 
-  // 3. Tier 3: Local Deterministic Rule-Based Explainer (100% Offline Guaranteed Fallback)
-  const fallback = generateFallbackExplanation(overallVerdict, urls);
-  fallback.source = "Deterministic fallback template (AI unavailable)";
-  return fallback;
+/**
+ * Helper: Query Cloud OpenAI-compatible endpoint (Google AI Studio / Groq / OpenRouter)
+ */
+async function queryCloudEndpoint(prompt, apiBase, apiKey, candidateModels) {
+  for (const model of candidateModels) {
+    try {
+      const cloudRes = await fetch(`${apiBase}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey.trim()}`
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: "You are Friend Shield (ফ্রেন্ড শিল্ড), an empathetic cyber-safety assistant powered by Open-Weight AI (Gemma 4). You MUST respond with ONLY a valid, parseable JSON object matching the requested schema."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+          max_tokens: 1500
+        }),
+        signal: AbortSignal.timeout(45000)
+      });
+
+      if (cloudRes.ok) {
+        const data = await cloudRes.json();
+        const content = data.choices?.[0]?.message?.content;
+        const parsed = extractAndParseJson(content);
+        const validated = validateExplanationPayload(parsed);
+        if (validated) {
+          validated.source = `Open-Weight AI (Gemma 4) (${model} via Cloud Inference)`;
+          validated.deployment = "cloud";
+          return validated;
+        }
+      } else {
+        const errData = await cloudRes.json().catch(() => ({}));
+        console.warn(`[Cloud AI ${model}] Warning:`, errData?.error?.message || cloudRes.statusText);
+      }
+    } catch (err) {
+      console.warn(`[Cloud AI ${model}] Request error:`, err.message);
+    }
+  }
+  return null;
 }
 
 export default {
