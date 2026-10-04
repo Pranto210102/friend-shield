@@ -5,7 +5,7 @@ import { resolveRedirects } from "../services/redirect-resolver.service.js";
 import { checkUrlsSafety } from "../services/safe-browsing.service.js";
 import { extractUrlFeatures, isRecognizedLegitimateDomain } from "../services/feature-extractor.service.js";
 import { predictUrlRisk } from "../services/ml-predictor.service.js";
-import { generateSafetyExplanation } from "../services/llm-explainer.service.js";
+import { generateSafetyExplanation, generateFallbackExplanation } from "../services/llm-explainer.service.js";
 import { analyzeSocialEngineering } from "../services/social-engineering.service.js";
 import { ValidationError } from "../utils/errors.js";
 
@@ -187,6 +187,7 @@ export async function analyzeMessage(req, res, next) {
       resolveRedirects: shouldResolve = true,
       checkThreats = true,
       explain = true,
+      progressive = false,
       language = "both"
     } = req.body ?? {};
 
@@ -328,16 +329,24 @@ export async function analyzeMessage(req, res, next) {
       }
     }
 
-    // 4. Generate AI Explanation in Bangla/English via Open-Source Qwen 3.8-27B LLM
+    // 4. Generate AI Explanation or Fast Deterministic Advice
     let explanation = null;
     if (explain) {
-      explanation = await generateSafetyExplanation({
-        originalMessage: trimmedMessage,
-        overallVerdict,
-        urls: activeUrls,
-        socialEngineering,
-        language
-      });
+      if (progressive) {
+        // Return instant deterministic advice so the user is protected in < 100ms
+        const fallback = generateFallbackExplanation(overallVerdict, activeUrls);
+        fallback.source = "Instant Rule & ONNX Triage (Gemma 4 is generating detailed explanation...)";
+        fallback.status = "generating";
+        explanation = fallback;
+      } else {
+        explanation = await generateSafetyExplanation({
+          originalMessage: trimmedMessage,
+          overallVerdict,
+          urls: activeUrls,
+          socialEngineering,
+          language
+        });
+      }
     }
 
     return res.status(200).json({
@@ -348,6 +357,7 @@ export async function analyzeMessage(req, res, next) {
       overallVerdict,
       socialEngineering,
       explanation,
+      progressive: Boolean(progressive),
       urls: activeUrls
     });
   } catch (error) {
@@ -413,7 +423,43 @@ export async function extractImageText(req, res, next) {
   }
 }
 
+/**
+ * Asynchronous explanation endpoint for Progressive Safety Architecture.
+ * Generates deeper Gemma 4 explanation without blocking the initial triage verdict.
+ */
+export async function explainAnalysis(req, res, next) {
+  try {
+    const {
+      originalMessage,
+      overallVerdict,
+      urls = [],
+      socialEngineering = null,
+      language = "both"
+    } = req.body ?? {};
+
+    if (typeof originalMessage !== "string" || !originalMessage.trim()) {
+      throw new ValidationError("The 'originalMessage' field is required.");
+    }
+
+    const explanation = await generateSafetyExplanation({
+      originalMessage: originalMessage.trim(),
+      overallVerdict: overallVerdict || "NEEDS_REVIEW",
+      urls,
+      socialEngineering,
+      language
+    });
+
+    return res.status(200).json({
+      success: true,
+      explanation
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export default {
   analyzeMessage,
-  extractImageText
+  extractImageText,
+  explainAnalysis
 };

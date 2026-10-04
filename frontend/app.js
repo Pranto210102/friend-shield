@@ -330,6 +330,7 @@ scanForm.addEventListener("submit", async (e) => {
       message: text,
       resolveRedirects: true,
       checkThreats: true,
+      progressive: true,
       explain: true,
       language: "both"
     };
@@ -346,7 +347,13 @@ scanForm.addEventListener("submit", async (e) => {
       throw new Error(data.error || "সার্ভার থেকে ত্রুটি ফিরে এসেছে।");
     }
 
+    // Instantly render triage results (< 150ms)
     renderResults(data);
+
+    // If progressive mode is active, fetch deep Gemma 4 explanation in background
+    if (data.progressive && data.explanation?.status === "generating") {
+      fetchProgressiveGemmaExplanation(text, data);
+    }
   } catch (err) {
     showToast(err.message || "সার্ভারের সাথে সংযোগ স্থাপন করা যায়নি।", "error");
   } finally {
@@ -354,6 +361,49 @@ scanForm.addEventListener("submit", async (e) => {
     btnSpinner.hidden = true;
   }
 });
+
+/**
+ * Asynchronously requests Gemma 4 explanation in the background
+ * without blocking immediate deterministic triage results.
+ */
+async function fetchProgressiveGemmaExplanation(originalText, analysisData) {
+  try {
+    const explainRes = await fetch(`${API_BASE_URL}/api/analyze/explain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        originalMessage: originalText,
+        overallVerdict: analysisData.overallVerdict,
+        urls: analysisData.urls,
+        socialEngineering: analysisData.socialEngineering,
+        language: "both"
+      })
+    });
+
+    if (!explainRes.ok) {
+      if (aiSource) {
+        aiSource.textContent = "মডেল: তাৎক্ষণিক নিরাপত্তা সুরক্ষা (Offline Triage)";
+      }
+      return;
+    }
+
+    const explainData = await explainRes.json();
+    if (explainData.explanation) {
+      currentExplanation = explainData.explanation;
+      if (aiSource) {
+        aiSource.innerHTML = `<span class="ai-ready-badge">✨ ${escapeHtml(currentExplanation.source || "Google Gemma 4")}</span>`;
+      }
+      renderExplanationLanguage();
+      explanationBox.classList.add("ai-updated-glow");
+      setTimeout(() => explanationBox.classList.remove("ai-updated-glow"), 2000);
+    }
+  } catch (err) {
+    console.warn("Background Gemma explanation error:", err);
+    if (aiSource) {
+      aiSource.textContent = "মডেল: তাৎক্ষণিক নিরাপত্তা সুরক্ষা (Offline Triage)";
+    }
+  }
+}
 
 // 7. Render Scan Results
 function renderResults(data) {
@@ -393,7 +443,16 @@ function renderResults(data) {
     explanationBox.hidden = false;
     currentExplanation = data.explanation;
     if (aiSource) {
-      aiSource.textContent = data.explanation.source ? `মডেল: ${data.explanation.source}` : "";
+      if (data.explanation.status === "generating") {
+        aiSource.innerHTML = `
+          <span class="ai-generating-badge">
+            <span class="ai-pulse-dot"></span>
+            <span>Gemma 4 গভীর বিশ্লেষণ তৈরি করছে... (Generating deep explanation...)</span>
+          </span>
+        `;
+      } else {
+        aiSource.textContent = data.explanation.source ? `মডেল: ${data.explanation.source}` : "";
+      }
     }
     renderExplanationLanguage();
   } else {

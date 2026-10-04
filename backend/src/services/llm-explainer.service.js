@@ -72,7 +72,7 @@ function validateExplanationPayload(obj) {
 /**
  * Fallback template generator when LLM is unavailable or offline.
  */
-function generateFallbackExplanation(overallVerdict, urls) {
+export function generateFallbackExplanation(overallVerdict, urls) {
   const isHighRisk = overallVerdict === "HIGH_RISK" || overallVerdict === "SUSPICIOUS";
   const noUrls = !urls || urls.length === 0;
 
@@ -168,18 +168,14 @@ ${
   isSafe
     ? `
 - The security engine determined this message has: NO KNOWN THREAT (SAFE / LEGITIMATE).
-- It is a genuine transaction confirmation (e.g., bKash, Nagad, or bank SMS with TrxID, balance, cash-in/send money) or a safe message with legitimate official links.
-- DO NOT call this message "suspicious" or "phishing"!
-- DO NOT say "এই মেসেজটি সন্দেহজনক হতে পারে" or "এটি ভুয়া মেসেজ"!
 - Clearly confirm in the summary and explanation that no known threats were found.
-- Point out 1-3 reassuring factors (e.g., legitimate transaction format, no malicious links, official domain).
-- Action advice: Confirm the transaction looks typical, and provide standard routine security hygiene (e.g., "মেসেজটি নিরাপদ দেখাচ্ছে। তবে সতর্কতাস্বরূপ কখনোই কাউকে আপনার বিকাশ/ব্যাংক পিন বা ওটিপি দেবেন না।").
+- Point out 1-2 reassuring factors (e.g., legitimate transaction format, no malicious links, official domain).
+- Action advice: Confirm the transaction looks typical, and provide standard routine security hygiene.
 `
     : isDangerous
     ? `
 - The security engine determined this message is: ${overallVerdict} (STRONG RISK INDICATORS).
 - State that this message/link contains strong phishing or deception indicators (e.g. brand impersonation, unencrypted HTTP, suspicious structural signals).
-- For unencrypted HTTP: State accurately that the link uses HTTP, so information submitted through it is not protected in transit (ইন্টারনেটে তথ্য সুরক্ষিতভাবে encrypted নাও থাকতে পারে).
 - Strongly urge the user NEVER to click the link and NEVER to disclose their PIN, OTP, or password.
 `
     : `
@@ -188,18 +184,22 @@ ${
 `
 }
 
-Output format:
-Format strictly as a valid JSON object with the following keys. IMPORTANT: For all "banglish" keys, you MUST write natural Bengali using ONLY English/Latin alphabet. NEVER use Bengali script characters in any banglish fields:
+CONSTRAINTS:
+- Keep every field concise, direct, and under 15 words.
+- In explanation fields, provide exactly 2 short bullet points (১. ... \\n২. ... or 1. ... \\n2. ...).
+- Output strictly valid JSON.
+
+Output format (strict JSON):
 {
   "summary_bn": "খুব সংক্ষিপ্ত এক লাইনে ফলাফল (বাংলা)",
-  "explanation_bn": "সহজ পয়েন্ট-ভিত্তিক ব্যাখ্যা (১. ..., ২. ...) (বাংলা)",
+  "explanation_bn": "১. ...\\n২. ...",
   "action_advice_bn": "ব্যবহারকারীর কী করা উচিত (বাংলা)",
   "summary_en": "One-line clear summary (English)",
-  "explanation_en": "Simple, point-based explanation (English)",
+  "explanation_en": "1. ...\\n2. ...",
   "action_advice_en": "Clear action advice (English)",
-  "summary_banglish": "One-line clear summary entirely in natural Banglish (Bengali written in English alphabet, e.g. 'Eta ekta biphodjjonok fake scam link, konovabei click korben na.')",
-  "explanation_banglish": "Point-based explanation entirely in natural Banglish (Bengali written in English alphabet, e.g. '1. Link-ti official domain noy.\\n2. Fake bonus er kotha bole taka churi korar chesta.\\n3. Link-ti secure noy tai password churi hote pare.')",
-  "action_advice_banglish": "Action advice entirely in natural Banglish (Bengali written in English alphabet, e.g. '1. Kono vabei link-e click korben na.\\n2. bKash ba Nagad PIN/OTP karo sathe share korben na.\\n3. Message-ti report kore delete kore din.')",
+  "summary_banglish": "One-line summary in Banglish (Latin alphabet)",
+  "explanation_banglish": "1. ...\\n2. ... (Banglish in Latin alphabet)",
+  "action_advice_banglish": "Action advice in Banglish (Latin alphabet)",
   "banglish_advice": "Short advice in Banglish"
 }
 `;
@@ -209,18 +209,15 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
   const apiBase = process.env.AI_API_BASE || process.env.GEMMA_API_BASE || "https://api.groq.com/openai/v1";
 
   if (apiKey && apiKey.trim()) {
-    const candidateModels = [
-      process.env.AI_MODEL,
-      process.env.GEMMA_MODEL,
-      "gemma-4-26b-a4b-it",
-      "models/gemma-4-26b-a4b-it",
-      "qwen/qwen3.8-27b",
-      "gemini-1.5-flash",
-      "gemma2-9b-it",
-      "llama-3.1-8b-instant",
-      "google/gemma-2-9b-it",
-      "gemma-7b-it"
-    ].filter(Boolean);
+    const candidateModels = Array.from(
+      new Set(
+        [
+          process.env.AI_MODEL,
+          process.env.GEMMA_MODEL,
+          "gemma-4-26b-a4b-it"
+        ].filter(Boolean)
+      )
+    );
 
     for (const model of candidateModels) {
       try {
@@ -243,9 +240,10 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
               }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.1
+            temperature: 0.1,
+            max_tokens: 1500
           }),
-          signal: AbortSignal.timeout(60000)
+          signal: AbortSignal.timeout(45000)
         });
 
         if (groqRes.ok) {
@@ -300,5 +298,6 @@ Format strictly as a valid JSON object with the following keys. IMPORTANT: For a
 }
 
 export default {
-  generateSafetyExplanation
+  generateSafetyExplanation,
+  generateFallbackExplanation
 };

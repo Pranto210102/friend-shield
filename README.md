@@ -15,11 +15,28 @@
 
 ## 🤝 The Friend Behind the Idea (Hacktoberfest: Build for a Friend)
 
-> *"My close friend in Dhaka recently lost his monthly savings after receiving an SMS claiming his bKash account was restricted. The message contained a shortened link to a lookalike portal that asked for his wallet PIN and OTP. Browser security warnings were in dense English that meant nothing to him. I built Friend Shield so he, and millions like him, can verify suspicious messages in seconds in natural Bangla and Banglish."*
+Last week, my roommate **Joy** handed me his phone and asked one question:
 
-- **The Target Friend**: Everyday smartphone users and family members who rely heavily on Mobile Financial Services (MFS) like bKash, Nagad, and Upay, but lack cybersecurity training.
+> *“Bhai, is this real?”*
+
+The message looked urgent:
+
+> *“Your bKash account will be closed within 24 hours. Verify immediately: bkash-verify.xyz”*
+
+It used a trusted brand name. It was written in Bangla. It created a deadline. And on a small phone screen, the link looked believable enough to make someone pause. But it was not from bKash—it was a phishing message designed to create panic, steal credentials, and compromise his wallet.
+
+That moment made me realize the real problem: **people do not need another technical warning. They need a clear, empathetic answer before they click.**
+
+- **The Target Friend**: Roommates, family members, and everyday smartphone users who rely heavily on Mobile Financial Services (MFS) like bKash, Nagad, and Upay, but lack cybersecurity training.
 - **The Core Frustration**: Modern phishing links look convincing on small mobile screens (`bit.ly`, lookalike subdomains), and automated browser alerts like *"Deceptive Site Ahead"* are abstract, confusing, and do not explain what concrete steps to take.
-- **The Solution**: An empathetic scanner where they can paste text or screenshots directly and receive a calm, evidence-backed verdict and step-by-step guidance in their native language (**Bangla**, **Banglish**, or **English**).
+- **The Solution**: An empathetic scanner where they can paste text, upload screenshots (`Ctrl + V`), or scan QR codes to receive a calm, evidence-backed verdict and step-by-step guidance in their native language (**Bangla**, **Banglish**, or **English**).
+
+> *“Bhai, this would have saved me a lot of tension.”* — **Joy**, after testing the first working build of Friend Shield.
+
+<div align="center">
+  <img src="friend_shield_demo.gif" alt="Friend Shield Live Analysis Demo" width="460" />
+  <p><em>Friend Shield in Action: Instant (&lt; 500 ms) Deterministic Triage + Asynchronous Gemma 4 Multilingual Explanation</em></p>
+</div>
 
 ---
 
@@ -56,17 +73,19 @@ Crucially, **the LLM is never allowed to make the security decision**. The local
 
 ```mermaid
 flowchart TD
-    A["Raw Message / Chat / Screenshot"] --> B["1. Delimiter-Aware URL & QR Extraction"]
-    B --> C["2. Safe Redirect Unshortening\n(Hop-by-hop Anti-SSRF Defense)"]
-    C --> D["3. 17-Point Feature Extraction\n(Locked Schema Contract)"]
-    D --> E["4. In-Process ONNX ML Inference\n(Ambiguity-Aware Probability)"]
-    D --> F["5. Deterministic Rules Engine\n(MFS Brand Impersonation, Raw IPs)"]
-    C --> G["6. Google Safe Browsing v4\n(Reputation Database Lookup)"]
-    E --> H["7. Evidence-Based Decision & Abstention Policy"]
-    F --> H
-    G --> H
-    H --> I["8. Open-Weight AI Explainer\n(Groq Cloud LPU / Local Ollama)"]
-    I --> J["Actionable Verdict & Safety Advice\n(HIGH_RISK | SUSPICIOUS | NEEDS_REVIEW | NO_KNOWN_THREAT)"]
+    A["Raw Message / Screenshot / QR"] --> B["Delimiter-Aware Link & OCR Extraction"]
+    B --> C["Anti-SSRF Safe Redirect Unshortening"]
+    C --> D["Parallel Threat Intelligence"]
+    D --> D1["17-Point Feature Extraction + ONNX ML Inference"]
+    D --> D2["Deterministic Rules Engine (MFS Brand & Raw IP)"]
+    D --> D3["Google Safe Browsing v4 Reputation Lookup"]
+    D --> D4["Social Engineering Manipulation Index (SEMI)"]
+    D1 --> E["Uncertainty-Aware Decision & Abstention Policy"]
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    E --> F["Open-Weight AI Safety Explainer (Gemma 4 / Fallback)"]
+    F --> G["Actionable Advice (Bangla, English, Banglish)"]
 ```
 
 ---
@@ -84,7 +103,8 @@ flowchart TD
 | **Regional MFS Brand Protection** | **Complete** | Detects domain mismatches against versioned `mfs-brands.json` allowlist (last verified: 2026-10-03), punycode spoofing, and credential keywords. |
 | **Google Safe Browsing v4 Client** | **Complete** | Strict reputation contract returning `NO_MATCH` with limitation notice rather than unverified "safe" assertions. |
 | **Social Engineering Index (SEMI)** | **Complete** | 4-vector normalized index quantifying psychological urgency, financial bait, authority impersonation, and coercion. |
-| **Open-Weight AI Explanations** | **Complete** | Gemma 4 31B (31B Instruct) via cloud or local Ollama, with deterministic fallback when model inference is unavailable. |
+| **Progressive Safety Architecture** | **Complete** | Instant deterministic triage (< 500 ms) delivers immediate containment advice; Gemma 4 generates deeper explanations asynchronously. |
+| **Open-Weight AI Explanations** | **Complete** | Gemma 4 (via Google Cloud Inference or local Ollama), with deterministic fallback when model inference is unavailable. |
 | **Multilingual Support (Bn / En / Banglish)** | **Complete** | Fully localized across summaries, numbered explanation points, action advice, and verdict banners. |
 | **Browser-Based QR Scanner** | **Tested Locally** | Client-side canvas QR decoding performed locally in the browser via `jsQR` (no app installation required). |
 | **Progressive Web App (PWA)** | **Tested Locally** | W3C Web App Manifest, Service Worker cache shell, touch-friendly mobile UI. Not required for core detection flow. |
@@ -147,12 +167,12 @@ To ensure reproducible reporting, latency measurements distinguish between isola
 | :--- | :---: | :--- |
 | **Warm ONNX Model Inference** | **0.32 ms** | `session.run()` with pre-allocated Float32Array tensor. |
 | **17-Feature Extraction** | **1.45 ms** | URL parsing, character counts, regex, and subdomain parsing. |
-| **Full In-Process Pipeline** | **2.10 ms** | Feature extraction + ML inference + rule checks (excluding network). |
+| **Full In-Process Security Pipeline** | **2.10 ms** | Feature extraction + ML inference + rule checks (excluding network). |
 | **Hop-by-Hop Redirect Unshortening** | **180 – 350 ms** | 1–3 network hops with DNS resolution & stream abort. |
 | **Google Safe Browsing API v4** | **120 – 250 ms** | Remote REST API lookup over HTTPS. |
-| **Gemma 4 31B Explanation (Cloud Provider)** | **350 – 650 ms** | `gemma-4-31b-it` via OpenAI-compatible endpoint, streaming structured JSON. |
-| **Gemma 4 31B Explanation (Local Ollama)** | **Hardware-dependent** | Local `gemma-4-31b-it` inference; latency varies with CPU/GPU, quantization, and context length. |
-| **Deterministic Fallback Template** | **< 1 ms** | Immediate structured response without model inference when endpoints are unavailable. |
+| **⚡ Stage 1: Instant Safety Triage (`/api/analyze/message`)** | **~200 – 450 ms** | **End-to-end user-facing response**: Extracts links, resolves redirects, evaluates ONNX + Safe Browsing + SEMI, and delivers immediate containment advice. |
+| **✨ Stage 2: Async Gemma 4 Deep Explainer (`/api/analyze/explain`)** | **Non-blocking background** | Google Gemma 4 generates deeper empathetic reasoning in Bangla, English, and Banglish, upgrading the UI progressively. |
+| **Deterministic Fallback Template** | **< 1 ms** | Immediate structured response without model inference when endpoints are offline. |
 
 ---
 
