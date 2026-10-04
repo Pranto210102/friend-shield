@@ -74,12 +74,10 @@ app.use(
   })
 );
 
-// Lightweight Health Check Endpoint (placed before rate limiter for keep-alive pings)
-app.get("/api/health", (_req, res) => {
-  res.status(200).json({
-    status: "ok",
-    timestamp: new Date().toISOString()
-  });
+// Ultra-lightweight Health Check Endpoint for keep-alive pings (cron-job.org / UptimeRobot)
+app.all("/api/health", (_req, res) => {
+  res.setHeader("Content-Type", "text/plain");
+  res.status(200).send("OK");
 });
 
 // General rate limiter: 100 requests per 15 minutes
