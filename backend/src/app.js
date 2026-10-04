@@ -74,6 +74,14 @@ app.use(
   })
 );
 
+// Lightweight Health Check Endpoint (placed before rate limiter for keep-alive pings)
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // General rate limiter: 100 requests per 15 minutes
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -99,14 +107,6 @@ const outboundLimiter = rateLimit({
     error: "Too many outbound verification requests. Please slow down.",
     code: "OUTBOUND_RATE_LIMIT_EXCEEDED"
   }
-});
-
-// Health check endpoint
-app.get("/api/health", (_req, res) => {
-  res.status(200).json({
-    status: "ok",
-    timestamp: new Date().toISOString()
-  });
 });
 
 // API Routes
